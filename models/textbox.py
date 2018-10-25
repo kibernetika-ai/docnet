@@ -4,6 +4,7 @@ import math
 import util.textbox_common
 from util import ssd_vgg_preprocessing
 import logging
+from models import ssd_common
 
 def conv2d(input, outputNum, kernel=[3, 3], strides=[1, 1], padding='SAME', bn=False, trainPhase=True, name='conv2d'):
     with tf.name_scope(name) as scope:
@@ -46,24 +47,47 @@ def _ssd_losses(logits, localisations,
         l_cross_neg = []
         l_loc = []
         sum_loss = []
+        flogits = []
+        fgscores = []
+        flocalisations = []
+        fglocalisations = []
         for i in range(len(logits)):
-            dtype = logits[i].dtype
             logging.info('logists: {}'.format(logits[i].shape))
             logging.info('gscores: {}'.format(gscores[i].shape))
             logging.info('localisations: {}'.format(localisations[i].shape))
             logging.info('glocalisations: {}'.format(glocalisations[i].shape))
+            flogits.append(tf.reshape(logits[i], [-1, 2]))
+            fgscores.append(tf.reshape(gscores[i], [-1]))
+            flocalisations.append(tf.reshape(localisations[i], [-1, 4]))
+            fglocalisations.append(tf.reshape(glocalisations[i], [-1, 4]))
+
+        logits = tf.concat(flogits, axis=0)
+        gscores = tf.concat(fgscores, axis=0)
+        localisations = tf.concat(flocalisations, axis=0)
+        glocalisations = tf.concat(fglocalisations, axis=0)
+
+        logging.info('logists: {}'.format(logits.shape))
+        logging.info('gscores: {}'.format(gscores.shape))
+        logging.info('localisations: {}'.format(localisations.shape))
+        logging.info('glocalisations: {}'.format(glocalisations.shape))
+
+        if alpha>0:
+            dtype = logits[i].dtype
             with tf.name_scope('block_%i' % i):
                 # Determine weights Tensor.
-                pmask = gscores[i] > match_threshold
+                pmask = gscores > 0
                 ipmask = tf.cast(pmask, tf.int32)
                 fpmask = tf.cast(pmask, dtype)
                 n_positives = tf.reduce_sum(fpmask)
 
+
                 # Negative mask
                 # Number of negative entries to select.
-                n_neg = tf.cast(negative_ratio * n_positives, tf.int32)
+                with tf.control_dependencies([tf.assert_greater(tf.cast(n_positives,tf.int32),0)]):
+                    n_neg = tf.cast(negative_ratio * n_positives, tf.int32)
 
-                nvalues = tf.where(tf.cast(1 - ipmask, tf.bool), gscores[i], np.zeros(gscores[i].shape))
+                with tf.control_dependencies([tf.assert_greater(tf.cast(n_neg,tf.int32),0)]):
+                    nvalues = tf.where(tf.cast(1 - ipmask, tf.bool), gscores, np.zeros(gscores.shape))
                 nvalues_flat = tf.reshape(nvalues, [-1])
                 val, idxes = tf.nn.top_k(nvalues_flat, k=n_neg)
                 minval = val[-1]
@@ -74,14 +98,14 @@ def _ssd_losses(logits, localisations,
                 # Add cross-entropy loss.
 
                 with tf.name_scope('cross_entropy_pos'):
-                    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits[i],
+                    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
                                                                           labels=ipmask)
                     loss = tf.losses.compute_weighted_loss(loss, fpmask)
                     l_cross_pos.append(loss)
                     sum_loss.append(loss)
 
                 with tf.name_scope('cross_entropy_neg'):
-                    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits[i],
+                    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
                                                                           labels=inmask)
                     loss = tf.losses.compute_weighted_loss(loss, fnmask)
                     l_cross_neg.append(loss)
@@ -91,7 +115,7 @@ def _ssd_losses(logits, localisations,
                 with tf.name_scope('localization'):
                     # Weights Tensor: positive mask + random negative.
                     weights = tf.expand_dims(alpha * fpmask, axis=-1)
-                    loss = abs_smooth(localisations[i] - glocalisations[i])
+                    loss = abs_smooth(localisations - glocalisations)
                     loss = tf.losses.compute_weighted_loss(loss, weights)
                     l_loc.append(loss)
                     sum_loss.append(loss)
@@ -234,11 +258,101 @@ class TextBoxEstimator(tf.estimator.Estimator):
         )
 
 
-def anchors(img_shape, dtype=np.float32):
+def anchors0(img_shape, dtype=np.float32):
     feat_shapes = [(38, 38), (19, 19), (10, 10), (5, 5), (3, 3), (1, 1)]
     anchor_ratios = [1, 2, 3, 5, 7, 10]
     scales = [0.2, 0.34, 0.48, 0.62, 0.76, 0.90]
     return textbox_achor_all_layers(img_shape, feat_shapes, anchor_ratios, scales, 0.5, dtype)
+
+
+def anchors(img_shape, dtype=np.float32):
+    feat_shapes = [(38, 38), (19, 19), (10, 10), (5, 5), (3, 3), (1, 1)]
+    anchor_sizes=[(21., 45.),
+                  (45., 99.),
+                  (99., 153.),
+                  (153., 207.),
+                  (207., 261.),
+                  (261., 315.)]
+    anchor_ratios=[[2, .5],
+                   [2, .5, 3, 1./3],
+                   [2, .5, 3, 1./3],
+                   [2, .5, 3, 1./3],
+                   [2, .5],
+                   [2, .5]]
+    anchor_steps=[8, 16, 32, 64, 100, 300]
+    anchor_offset=0.5
+    ##return textbox_achor_all_layers(img_shape, feat_shapes, anchor_ratios, scales, 0.5, dtype)
+    return ssd_anchors_all_layers(img_shape,feat_shapes,anchor_sizes,anchor_ratios,anchor_steps,anchor_offset,dtype)
+
+def ssd_anchors_all_layers(img_shape,
+                           layers_shape,
+                           anchor_sizes,
+                           anchor_ratios,
+                           anchor_steps,
+                           offset=0.5,
+                           dtype=np.float32):
+    """Compute anchor boxes for all feature layers.
+    """
+    layers_anchors = []
+    for i, s in enumerate(layers_shape):
+        anchor_bboxes = ssd_anchor_one_layer(img_shape, s,
+                                             anchor_sizes[i],
+                                             anchor_ratios[i],
+                                             anchor_steps[i],
+                                             offset=offset, dtype=dtype)
+        layers_anchors.append(anchor_bboxes)
+    return layers_anchors
+
+def ssd_anchor_one_layer(img_shape,
+                         feat_shape,
+                         sizes,
+                         ratios,
+                         step,
+                         offset=0.5,
+                         dtype=np.float32):
+    """Computer SSD default anchor boxes for one feature layer.
+    Determine the relative position grid of the centers, and the relative
+    width and height.
+    Arguments:
+      feat_shape: Feature shape, used for computing relative position grids;
+      size: Absolute reference sizes;
+      ratios: Ratios to use on these features;
+      img_shape: Image shape, used for computing height, width relatively to the
+        former;
+      offset: Grid offset.
+    Return:
+      y, x, h, w: Relative x and y grids, and height and width.
+    """
+    # Compute the position grid: simple way.
+    # y, x = np.mgrid[0:feat_shape[0], 0:feat_shape[1]]
+    # y = (y.astype(dtype) + offset) / feat_shape[0]
+    # x = (x.astype(dtype) + offset) / feat_shape[1]
+    # Weird SSD-Caffe computation using steps values...
+    y, x = np.mgrid[0:feat_shape[0], 0:feat_shape[1]]
+    y = (y.astype(dtype) + offset) * step / img_shape[0]
+    x = (x.astype(dtype) + offset) * step / img_shape[1]
+
+    # Expand dims to support easy broadcasting.
+    y = np.expand_dims(y, axis=-1)
+    x = np.expand_dims(x, axis=-1)
+
+    # Compute relative height and width.
+    # Tries to follow the original implementation of SSD for the order.
+    num_anchors = len(sizes) + len(ratios)
+    h = np.zeros((num_anchors, ), dtype=dtype)
+    w = np.zeros((num_anchors, ), dtype=dtype)
+    # Add first anchor boxes with ratio=1.
+    h[0] = sizes[0] / img_shape[0]
+    w[0] = sizes[0] / img_shape[1]
+    di = 1
+    if len(sizes) > 1:
+        h[1] = math.sqrt(sizes[0] * sizes[1]) / img_shape[0]
+        w[1] = math.sqrt(sizes[0] * sizes[1]) / img_shape[1]
+        di += 1
+    for i, r in enumerate(ratios):
+        h[i+di] = sizes[0] / img_shape[0] / math.sqrt(r)
+        w[i+di] = sizes[0] / img_shape[1] * math.sqrt(r)
+    return y, x, h, w
 
 
 def textbox_achor_all_layers(img_shape,
@@ -287,10 +401,20 @@ def textbox_anchor_one_layer(img_shape,
         w[i] = scale * math.sqrt(r) / feat_size[1]
     return y_out, x_out, h, w
 
-
-def bboxes_encode(bboxes, anchors,
+def bboxes_encode(labels,bboxes, anchors,
+                   scope='text_bboxes_encode'):
+    prior_scaling = [0.1, 0.1, 0.2, 0.2]
+    return ssd_common.tf_ssd_bboxes_encode(
+        labels, bboxes, anchors,
+        1,
+        1,
+        ignore_threshold=0.5,
+        prior_scaling=prior_scaling,
+        scope=scope)
+def bboxes_encode0(bboxes, anchors,
                     scope='text_bboxes_encode'):
     prior_scaling = [0.1, 0.1, 0.2, 0.2]
+
     return util.textbox_common.tf_text_bboxes_encode(
             bboxes, anchors,
             matching_threshold=0.1,
@@ -315,22 +439,34 @@ def bboxes_encode_0(bboxes, anchors,
 
 def fake_fn(params, is_training):
     text_shape = (300, 300)
-    text_anchors = anchors(text_shape)
+    text_anchors = anchors0(text_shape)
+    import pandas as pd
+    import PIL.Image
+    df = pd.read_csv(params['data_set']+'/train.csv')
+    def _gen():
+        for (name, group) in df.groupby('name'):
+            i = PIL.Image.open(params['data_set']+'/'+name)
+            width, height = i.size
+            i = i.resize(text_shape)
+            i = np.asarray(i)/255.0
+            ymin = group['ymin'].values/height
+            ymax = group['ymax'].values/height
+            xmin = group['xmin'].values/width
+            xmax = group['xmax'].values/width
+            ymin = np.reshape(ymin,(len(ymin),1))
+            xmin = np.reshape(xmin,(len(xmin),1))
+            ymax = np.reshape(ymax,(len(ymax),1))
+            xmax = np.reshape(xmax,(len(xmax),1))
+            r = np.concatenate([ymin,xmin,ymax,xmax],axis=1)
+            l = np.zeros([len(r)], dtype=np.int64)
+            yield i,r,l
     def _data():
-        ds = tf.data.Dataset.range(params['batch_size']*10)
-        def _fake(_):
-            i = np.random.uniform(low=0.0, high=1.0, size=(300, 300, 3))
-            b = [np.array([i*20+2,i*20+2,i*20+5,i*20+50],dtype=np.float32) for i in range(1)]
-            b = np.stack(b)
-            b /= 300
-            l = np.ones([1, 1], dtype=np.int32)
-            return i, b, l
-
-        ds = ds.map(_fake)
+        ds = tf.data.Dataset.from_generator(_gen,(tf.float32,tf.float32,tf.int64),
+                                            ([text_shape[0],text_shape[1],3],[None,4],[None]))
 
         def _proccess(i, b, l):
-            i, _, b = ssd_vgg_preprocessing.preprocess_for_train(i, l, b, text_shape)
-            glocalisations, gscores = bboxes_encode(b, text_anchors)
+            i, l, b = ssd_vgg_preprocessing.preprocess_for_train(i, l, b, text_shape)
+            glocalisations, gscores = bboxes_encode0(b, text_anchors)
             logging.info('gscores: {}'.format(gscores))
             return {'image': i,'glocalisations': tuple(glocalisations), 'gscores': tuple(gscores)},0
 
