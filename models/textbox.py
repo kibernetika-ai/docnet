@@ -209,6 +209,7 @@ def _box_fn(features, labels, mode, params=None, config=None):
         layers = [conv4_3, conv7, conv8_2, conv9_2, conv10_2, pool6]
         logits = []
         localisations = []
+        predictions = []
         for i, layer in enumerate(layers):
             with tf.variable_scope('{}_box'.format(i)):
                 norm = 20 if i == 0 else -1
@@ -216,6 +217,7 @@ def _box_fn(features, labels, mode, params=None, config=None):
                                             normalization=norm)
                 logits.append(sco_pred)
                 localisations.append(loc_pred)
+                predictions.append(tf.nn.softmax(sco_pred))
     if mode != tf.estimator.ModeKeys.PREDICT:
         total_loss = _ssd_losses(logits, localisations,glasses,glocalisations, gscores,
                                  match_threshold=0.5,
@@ -224,6 +226,8 @@ def _box_fn(features, labels, mode, params=None, config=None):
                                  label_smoothing=params['label_smoothing'])
 
     if mode == tf.estimator.ModeKeys.TRAIN:
+        pscores,pboxes = detected_bboxes(predictions,localisations,clipping_bbox=tf.constant([0,0,1,1],dtype=tf.float32))
+        tf_summary_image(input,pboxes)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
             optimizer = tf.train.AdamOptimizer(params['learning_rate'])
@@ -237,6 +241,15 @@ def _box_fn(features, labels, mode, params=None, config=None):
         export_outputs=None,
         train_op=train)
 
+def tf_summary_image(image, bboxes, name='image', unwhitened=False):
+    """Add image with bounding boxes to summary.
+    """
+    if unwhitened:
+        image = ssd_vgg_preprocessing.tf_image_unwhitened(image)
+    image = tf.expand_dims(image, 0)
+    bboxes = tf.expand_dims(bboxes, 0)
+    image_with_box = tf.image.draw_bounding_boxes(image, bboxes)
+    tf.summary.image(name, image_with_box)
 
 class TextBoxEstimator(tf.estimator.Estimator):
     def __init__(
@@ -358,6 +371,26 @@ def bboxes_encode(labels,bboxes, anchors,
         prior_scaling=prior_scaling,
         scope=scope)
 
+def detected_bboxes(predictions, localisations,
+                    select_threshold=None, nms_threshold=0.5,
+                    clipping_bbox=None, top_k=400, keep_top_k=200):
+    """Get the detected bounding boxes from the SSD network output.
+    """
+    # Select top_k bboxes from predictions, and clip
+    rscores, rbboxes = \
+        ssd_common.tf_ssd_bboxes_select(predictions, localisations,
+                                        select_threshold=select_threshold,
+                                        num_classes=2)
+    rscores, rbboxes = \
+        tfe.bboxes_sort(rscores, rbboxes, top_k=top_k)
+    # Apply NMS algorithm.
+    rscores, rbboxes = \
+        tfe.bboxes_nms_batch(rscores, rbboxes,
+                             nms_threshold=nms_threshold,
+                             keep_top_k=keep_top_k)
+    if clipping_bbox is not None:
+        rbboxes = tfe.bboxes_clip(clipping_bbox, rbboxes)
+    return rscores, rbboxes
 
 def fake_fn(params, is_training):
     text_shape = (300, 300)
