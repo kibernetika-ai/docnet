@@ -551,6 +551,10 @@ def fake_fn(params, is_training):
             ymax = group['ymax'].values/height
             xmin = group['xmin'].values/width
             xmax = group['xmax'].values/width
+            ymin = np.crop(ymin,0,1)
+            ymax = np.crop(ymax,0,1)
+            xmin = np.crop(xmin,0,1)
+            xmax = np.crop(xmax,0,1)
             ymin = np.reshape(ymin,(len(ymin),1))
             xmin = np.reshape(xmin,(len(xmin),1))
             ymax = np.reshape(ymax,(len(ymax),1))
