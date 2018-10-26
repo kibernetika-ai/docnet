@@ -366,6 +366,7 @@ def fake_fn(params, is_training):
     import PIL.Image
     df = pd.read_csv(params['data_set']+'/train.csv')
     def _gen():
+        global df
         for _ in range(params['epoch']):
             df = df.sample(frac=1).reset_index(drop=True)
             for (name, group) in df.groupby('name'):
