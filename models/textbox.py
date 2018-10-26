@@ -560,7 +560,7 @@ def fake_fn(params, is_training):
             ymax = np.reshape(ymax,(len(ymax),1))
             xmax = np.reshape(xmax,(len(xmax),1))
             r = np.concatenate([ymin,xmin,ymax,xmax],axis=1)
-            l = np.zeros([len(r)], dtype=np.int64)
+            l = np.ones([len(r)], dtype=np.int64)
             yield i,r,l
     def _data():
         ds = tf.data.Dataset.from_generator(_gen,(tf.float32,tf.float32,tf.int64),
