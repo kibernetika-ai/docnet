@@ -41,7 +41,6 @@ def _ssd_losses(logits, localisations,
                negative_ratio=3.,
                alpha=1.,
                label_smoothing=0.,
-               device='/cpu:0',
                scope=None):
     with tf.name_scope(scope, 'ssd_losses'):
         lshape = tfe.get_shape(logits[0], 5)
@@ -122,105 +121,6 @@ def _ssd_losses(logits, localisations,
             tf.losses.add_loss(loss)
             tf.summary.scalar('loss/localization', loss)
     return total_loss
-
-
-def _ssd_losses_0(logits, localisations,
-                glocalisations, gscores,
-                match_threshold=0.1,
-                negative_ratio=3.,
-                alpha=1.,
-                label_smoothing=0.,
-                scope=None):
-    with tf.name_scope(scope, 'text_loss'):
-        l_cross_pos = []
-        l_cross_neg = []
-        l_loc = []
-        sum_loss = []
-        flogits = []
-        fgscores = []
-        flocalisations = []
-        fglocalisations = []
-        for i in range(len(logits)):
-            logging.info('logists: {}'.format(logits[i].shape))
-            logging.info('gscores: {}'.format(gscores[i].shape))
-            logging.info('localisations: {}'.format(localisations[i].shape))
-            logging.info('glocalisations: {}'.format(glocalisations[i].shape))
-            flogits.append(tf.reshape(logits[i], [-1, 2]))
-            fgscores.append(tf.reshape(gscores[i], [-1]))
-            flocalisations.append(tf.reshape(localisations[i], [-1, 4]))
-            fglocalisations.append(tf.reshape(glocalisations[i], [-1, 4]))
-
-        logits = tf.concat(flogits, axis=0)
-        gscores = tf.concat(fgscores, axis=0)
-        localisations = tf.concat(flocalisations, axis=0)
-        glocalisations = tf.concat(fglocalisations, axis=0)
-
-        logging.info('logists: {}'.format(logits.shape))
-        logging.info('gscores: {}'.format(gscores.shape))
-        logging.info('localisations: {}'.format(localisations.shape))
-        logging.info('glocalisations: {}'.format(glocalisations.shape))
-
-        if alpha>0:
-            dtype = logits[i].dtype
-            with tf.name_scope('block_%i' % i):
-                # Determine weights Tensor.
-                pmask = gscores > 0
-                ipmask = tf.cast(pmask, tf.int32)
-                fpmask = tf.cast(pmask, dtype)
-                n_positives = tf.reduce_sum(fpmask)
-
-
-                # Negative mask
-                # Number of negative entries to select.
-                with tf.control_dependencies([tf.assert_greater(tf.cast(n_positives,tf.int32),0)]):
-                    n_neg = tf.cast(negative_ratio * n_positives, tf.int32)
-
-                with tf.control_dependencies([tf.assert_greater(tf.cast(n_neg,tf.int32),0)]):
-                    nvalues = tf.where(tf.cast(1 - ipmask, tf.bool), gscores, np.zeros(gscores.shape))
-                nvalues_flat = tf.reshape(nvalues, [-1])
-                val, idxes = tf.nn.top_k(nvalues_flat, k=n_neg)
-                minval = val[-1]
-                # Final negative mask.
-                nmask = nvalues > minval
-                fnmask = tf.cast(nmask, dtype)
-                inmask = tf.cast(nmask, tf.int32)
-                # Add cross-entropy loss.
-
-                with tf.name_scope('cross_entropy_pos'):
-                    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
-                                                                          labels=ipmask)
-                    loss = tf.losses.compute_weighted_loss(loss, fpmask)
-                    l_cross_pos.append(loss)
-                    sum_loss.append(loss)
-
-                with tf.name_scope('cross_entropy_neg'):
-                    loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,
-                                                                          labels=inmask)
-                    loss = tf.losses.compute_weighted_loss(loss, fnmask)
-                    l_cross_neg.append(loss)
-                    sum_loss.append(loss)
-
-                # Add localization loss: smooth L1, L2, ...
-                with tf.name_scope('localization'):
-                    # Weights Tensor: positive mask + random negative.
-                    weights = tf.expand_dims(alpha * fpmask, axis=-1)
-                    loss = abs_smooth(localisations - glocalisations)
-                    loss = tf.losses.compute_weighted_loss(loss, weights)
-                    l_loc.append(loss)
-                    sum_loss.append(loss)
-
-        # Additional total losses...
-        with tf.name_scope('total'):
-            total_cross_pos = tf.add_n(l_cross_pos, 'cross_entropy_pos')
-            total_cross_neg = tf.add_n(l_cross_neg, 'cross_entropy_neg')
-            total_cross = tf.add(total_cross_pos, total_cross_neg, 'cross_entropy')
-            total_loc = tf.add_n(l_loc, 'localization')
-            sum_loss = tf.add_n(l_loc, 'sum_loss')
-            tf.summary.scalar('loss/cross_entropy_pos', total_cross_pos)
-            tf.summary.scalar('loss/cross_entropy_neg', total_cross_neg)
-            tf.summary.scalar('loss/cross_entropy', total_cross)
-            tf.summary.scalar('loss/localization', total_loc)
-    return sum_loss
 
 
 def _text_multibox_layer(inputs,
@@ -363,13 +263,6 @@ class TextBoxEstimator(tf.estimator.Estimator):
         )
 
 
-def anchors0(img_shape, dtype=np.float32):
-    feat_shapes = [(38, 38), (19, 19), (10, 10), (5, 5), (3, 3), (1, 1)]
-    anchor_ratios = [1, 2, 3, 5, 7, 10]
-    scales = [0.2, 0.34, 0.48, 0.62, 0.76, 0.90]
-    return textbox_achor_all_layers(img_shape, feat_shapes, anchor_ratios, scales, 0.5, dtype)
-
-
 def anchors(img_shape, dtype=np.float32):
     feat_shapes = [(38, 38), (19, 19), (10, 10), (5, 5), (3, 3), (1, 1)]
     anchor_sizes=[(300.0*0.2, 45.),
@@ -453,51 +346,6 @@ def ssd_anchor_one_layer(img_shape,
     return y, x, h, w
 
 
-def textbox_achor_all_layers(img_shape,
-                             layers_shape,
-                             anchor_ratios,
-                             scales,
-                             offset=0.5,
-                             dtype=np.float32):
-    """
-    Compute anchor boxes for all feature layers.
-    """
-    layers_anchors = []
-    for i, s in enumerate(layers_shape):
-        anchor_bboxes = textbox_anchor_one_layer(img_shape, s,
-                                                 anchor_ratios,
-                                                 scales[i],
-                                                 offset=offset, dtype=dtype)
-        layers_anchors.append(anchor_bboxes)
-    return layers_anchors
-
-
-def textbox_anchor_one_layer(img_shape,
-                             feat_size,
-                             ratios,
-                             scale,
-                             offset=0.5,
-                             dtype=np.float32):
-    # Follow the papers scheme
-    # 12 ahchor boxes with out sk' = sqrt(sk * sk+1)
-    y, x = np.mgrid[0:feat_size[0], 0:feat_size[1]] + 0.5
-    y = y.astype(dtype) / feat_size[0]
-    x = x.astype(dtype) / feat_size[1]
-    x_offset = x
-    y_offset = y + offset
-    x_out = np.stack((x, x_offset), -1)
-    y_out = np.stack((y, y_offset), -1)
-    y_out = np.expand_dims(y_out, axis=-1)
-    x_out = np.expand_dims(x_out, axis=-1)
-
-    #
-    num_anchors = 6
-    h = np.zeros((num_anchors,), dtype=dtype)
-    w = np.zeros((num_anchors,), dtype=dtype)
-    for i, r in enumerate(ratios):
-        h[i] = scale / math.sqrt(r) / feat_size[0]
-        w[i] = scale * math.sqrt(r) / feat_size[1]
-    return y_out, x_out, h, w
 
 def bboxes_encode(labels,bboxes, anchors,
                    scope='text_bboxes_encode'):
@@ -509,30 +357,6 @@ def bboxes_encode(labels,bboxes, anchors,
         ignore_threshold=0.5,
         prior_scaling=prior_scaling,
         scope=scope)
-def bboxes_encode0(bboxes, anchors,
-                    scope='text_bboxes_encode'):
-    prior_scaling = [0.1, 0.1, 0.2, 0.2]
-
-    return util.textbox_common.tf_text_bboxes_encode(
-            bboxes, anchors,
-            matching_threshold=0.1,
-            prior_scaling=prior_scaling,
-            scope=scope)
-
-def bboxes_encode_0(bboxes, anchors,
-                  scope='text_bboxes_encode'):
-    prior_scaling = [0.1, 0.1, 0.2, 0.2]
-    r1 = []
-    r2 = []
-    for s in tf.split(bboxes, bboxes.shape[0]):
-        v1, v2 = util.textbox_common.tf_text_bboxes_encode(
-            s, anchors,
-            matching_threshold=0.1,
-            prior_scaling=prior_scaling,
-            scope=scope)
-        r1.append(v1)
-        r2.append(v2)
-    return tf.concat(r1, 0), tf.concat(r2, 0)
 
 
 def fake_fn(params, is_training):
