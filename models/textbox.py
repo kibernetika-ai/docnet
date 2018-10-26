@@ -366,26 +366,28 @@ def fake_fn(params, is_training):
     import PIL.Image
     df = pd.read_csv(params['data_set']+'/train.csv')
     def _gen():
-        for (name, group) in df.groupby('name'):
-            i = PIL.Image.open(params['data_set']+'/'+name)
-            width, height = i.size
-            i = i.resize(text_shape)
-            i = np.asarray(i)/255.0
-            ymin = group['ymin'].values/height
-            ymax = group['ymax'].values/height
-            xmin = group['xmin'].values/width
-            xmax = group['xmax'].values/width
-            ymin = np.clip(ymin,0,1)
-            ymax = np.clip(ymax,0,1)
-            xmin = np.clip(xmin,0,1)
-            xmax = np.clip(xmax,0,1)
-            ymin = np.reshape(ymin,(len(ymin),1))
-            xmin = np.reshape(xmin,(len(xmin),1))
-            ymax = np.reshape(ymax,(len(ymax),1))
-            xmax = np.reshape(xmax,(len(xmax),1))
-            r = np.concatenate([ymin,xmin,ymax,xmax],axis=1)
-            l = np.ones([len(r)], dtype=np.int64)
-            yield i,r,l
+        for _ in params['epoch']:
+            df = df.sample(frac=1).reset_index(drop=True)
+            for (name, group) in df.groupby('name'):
+                i = PIL.Image.open(params['data_set']+'/'+name)
+                width, height = i.size
+                i = i.resize(text_shape)
+                i = np.asarray(i)/255.0
+                ymin = group['ymin'].values/height
+                ymax = group['ymax'].values/height
+                xmin = group['xmin'].values/width
+                xmax = group['xmax'].values/width
+                ymin = np.clip(ymin,0,1)
+                ymax = np.clip(ymax,0,1)
+                xmin = np.clip(xmin,0,1)
+                xmax = np.clip(xmax,0,1)
+                ymin = np.reshape(ymin,(len(ymin),1))
+                xmin = np.reshape(xmin,(len(xmin),1))
+                ymax = np.reshape(ymax,(len(ymax),1))
+                xmax = np.reshape(xmax,(len(xmax),1))
+                r = np.concatenate([ymin,xmin,ymax,xmax],axis=1)
+                l = np.ones([len(r)], dtype=np.int64)
+                yield i,r,l
     def _data():
         ds = tf.data.Dataset.from_generator(_gen,(tf.float32,tf.float32,tf.int64),
                                             ([text_shape[0],text_shape[1],3],[None,4],[None]))
