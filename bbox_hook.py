@@ -23,15 +23,15 @@ def preprocess(inputs, ctx):
     ctx.image = image
     ctx.ratio = ratio
     return {
-               'input_images': np.stack([resize_image], axis=0),
+               'images': np.stack([resize_image], axis=0),
            }, ctx
 
 
 @log
 def postprocess(outputs, ctx):
     LOG.info('outputs: {}'.format(outputs))
-    scores = outputs['feature_fusion/Conv_7/Sigmoid']
-    geometry = outputs['feature_fusion/concat_3:0']
+    scores = outputs['scores']
+    geometry = outputs['geometry']
     boxes = detect(scores, geometry)
     scores = boxes[:, 8]
     boxes = boxes[:, :8].reshape((-1, 4, 2))
