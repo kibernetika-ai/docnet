@@ -19,7 +19,7 @@ def preprocess(inputs, ctx):
     ctx.ratio = ratio
     return {
                'images': np.stack([resize_image], axis=0),
-           }, ctx
+           }
 
 
 
