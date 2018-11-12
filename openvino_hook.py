@@ -114,7 +114,7 @@ def resize_image(im,use=512):
 
     wpad = 512-resize_w
     hpad = 512-resize_h
-    np.pad(im,((0,hpad),(0,wpad),(0,0)),'constant', constant_values=0)
+    im = np.pad(im,((0,hpad),(0,wpad),(0,0)),'constant', constant_values=0)
 
     return im, (ratio_h, ratio_w)
 
