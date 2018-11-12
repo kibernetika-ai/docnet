@@ -6,16 +6,11 @@ import logging
 LOG = logging.getLogger(__name__)
 
 
-def log(func):
-    def decorator(*args, **kwargs):
-        LOG.info('Running %s...' % func.__name__)
-        return func(*args, **kwargs)
-
-    return decorator
 
 
-@log
-def preprocess(inputs, ctx):
+
+
+def preprocess_hook(inputs, ctx):
     LOG.info('inputs: {}'.format(inputs))
     image = inputs['image'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
@@ -27,8 +22,8 @@ def preprocess(inputs, ctx):
            }, ctx
 
 
-@log
-def postprocess(outputs, ctx):
+
+def postprocess_hook(outputs, ctx):
     LOG.info('outputs: {}'.format(outputs))
     scores = outputs['scores']
     geometry = outputs['geometry']
