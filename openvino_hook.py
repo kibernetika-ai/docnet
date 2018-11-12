@@ -28,6 +28,8 @@ def postprocess(outputs, ctx):
     LOG.info('outputs: {}'.format(outputs))
     scores = outputs['feature_fusion/Conv_7/Sigmoid']
     geometry = outputs['feature_fusion/concat_3']
+    LOG.info('scores: {}'.format(scores.shape))
+    LOG.info('geometry: {}'.format(geometry.shape))
     boxes = detect(scores, geometry)
     scores = boxes[:, 8]
     boxes = boxes[:, :8].reshape((-1, 4, 2))
