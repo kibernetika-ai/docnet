@@ -18,16 +18,16 @@ def preprocess(inputs, ctx):
     resized_im = resized_im.astype(np.float32)
     ctx.image = image
     ctx.ratio = ratio
+    resized_im = np.transpose(resized_im,(2,0,1))
     return {
-               'images': np.stack([resized_im], axis=0),
+               'input_images': np.stack([resized_im], axis=0),
            }
-
 
 
 def postprocess(outputs, ctx):
     LOG.info('outputs: {}'.format(outputs))
-    scores = outputs['scores']
-    geometry = outputs['geometry']
+    scores = outputs['feature_fusion/Conv_7/Sigmoid']
+    geometry = outputs['feature_fusion/concat_3']
     boxes = detect(scores, geometry)
     scores = boxes[:, 8]
     boxes = boxes[:, :8].reshape((-1, 4, 2))
