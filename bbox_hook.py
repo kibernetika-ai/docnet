@@ -4,7 +4,7 @@ import numpy as np
 import logging
 
 LOG = logging.getLogger(__name__)
-
+LOG.setLevel(logging.INFO)
 
 
 
@@ -15,7 +15,7 @@ def preprocess_hook(inputs, ctx):
     image = inputs['image'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
     resized_im, ratio = resize_image(image)
-    ctx.image = image
+    ctx.image1 = image
     ctx.ratio = ratio
     return {
                'images': np.stack([resize_image], axis=0),
