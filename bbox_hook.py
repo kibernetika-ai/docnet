@@ -16,7 +16,7 @@ def preprocess(inputs, ctx):
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
     resized_im, ratio = resize_image(image)
     resized_im = resized_im.astype(np.float32)
-    ctx.image1 = image
+    ctx.image = image
     ctx.ratio = ratio
     return {
                'images': np.stack([resized_im], axis=0),
