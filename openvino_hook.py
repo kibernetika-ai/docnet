@@ -30,6 +30,8 @@ def postprocess(outputs, ctx):
     geometry = outputs['feature_fusion/concat_3']
     LOG.info('scores: {}'.format(scores.shape))
     LOG.info('geometry: {}'.format(geometry.shape))
+    scores = np.transpose(scores,(0,2,3,1))
+    geometry = np.transpose(geometry,(0,2,3,1))
     boxes = detect(scores, geometry)
     scores = boxes[:, 8]
     boxes = boxes[:, :8].reshape((-1, 4, 2))
