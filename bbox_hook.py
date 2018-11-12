@@ -10,7 +10,7 @@ LOG.setLevel(logging.INFO)
 
 
 
-def preprocess_hook(inputs, ctx):
+def preprocess(inputs, ctx):
     LOG.info('inputs: {}'.format(inputs))
     image = inputs['image'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
@@ -23,7 +23,7 @@ def preprocess_hook(inputs, ctx):
 
 
 
-def postprocess_hook(outputs, ctx):
+def postprocess(outputs, ctx):
     LOG.info('outputs: {}'.format(outputs))
     scores = outputs['scores']
     geometry = outputs['geometry']
