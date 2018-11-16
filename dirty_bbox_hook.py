@@ -12,11 +12,17 @@ LOG.setLevel(logging.INFO)
 
 def preprocess(inputs, ctx):
     image = inputs['image'][0]
+    score_map_thresh = inputs['score_thresh'][0]
+    box_thresh = inputs['box_thresh'][0]
+    nms_thres = inputs['nms_thres'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
     resized_im, ratio = resize_image(image)
     resized_im = resized_im.astype(np.float32)
     ctx.image = image
     ctx.ratio = ratio
+    ctx.score_map_thresh=score_map_thresh
+    ctx.box_thresh=box_thresh
+    ctx.nms_thres=nms_thres
     return {
                'images': np.stack([resized_im], axis=0),
            }
@@ -26,7 +32,7 @@ def preprocess(inputs, ctx):
 def postprocess(outputs, ctx):
     scores = outputs['scores']
     geometry = outputs['geometry']
-    boxes = detect(scores, geometry)
+    boxes = detect(scores, geometry,score_map_thresh=ctx.score_map_thresh,box_thresh=ctx.box_thresh, nms_thres=ctx.nms_thres)
     scores = boxes[:, 4]
     boxes = boxes[:, :4]
     boxes[:, 0] /= ctx.ratio[1]
@@ -72,13 +78,6 @@ def detect(score_map, geo_map, score_map_thresh=0.8, box_thresh=0.1, nms_thres=0
     if boxes.shape[0] == 0:
         return None
 
-    # here we filter some low score boxes by the average score map, this is different from the orginal paper
-    for i, box in enumerate(boxes):
-        mask = np.zeros_like(score_map, dtype=np.uint8)
-        box = box.astype(np.int32) // 4
-        cv2.rectangle(mask,(box[0],box[1]),(box[2],box[3]),1)
-        boxes[i, 4] = cv2.mean(score_map, mask)[0]
-    #boxes = boxes[boxes[:, 4] > box_thresh]
 
     return boxes
 
@@ -198,7 +197,7 @@ def intersection(g, p):
 
 def weighted_merge(g, p):
     g[:2] = np.minimum(g[:2], p[:2])
-    g[2:4] = np.minimum(g[2:4], p[2:4])
+    g[2:4] = np.maximum(g[2:4], p[2:4])
     g[4] = (g[4] + p[4])
     return g
 
