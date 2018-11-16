@@ -27,10 +27,12 @@ def postprocess(outputs, ctx):
     scores = outputs['scores']
     geometry = outputs['geometry']
     boxes = detect(scores, geometry)
-    scores = boxes[:, 8]
-    boxes = boxes[:, :8].reshape((-1, 4, 2))
-    boxes[:, :, 0] /= ctx.ratio[1]
-    boxes[:, :, 1] /= ctx.ratio[0]
+    scores = boxes[:, 4]
+    boxes = boxes[:, :4]
+    boxes[:, 0] /= ctx.ratio[1]
+    boxes[:, 1] /= ctx.ratio[0]
+    boxes[:, 2] /= ctx.ratio[1]
+    boxes[:, 3] /= ctx.ratio[0]
 
     image = ctx.image
     for box in boxes:
