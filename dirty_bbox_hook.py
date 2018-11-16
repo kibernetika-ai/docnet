@@ -78,7 +78,7 @@ def detect(score_map, geo_map, score_map_thresh=0.8, box_thresh=0.1, nms_thres=0
         box = box.astype(np.int32) // 4
         cv2.rectangle(mask,(box[0],box[1]),(box[2],box[3]),1)
         boxes[i, 4] = cv2.mean(score_map, mask)[0]
-    boxes = boxes[boxes[:, 4] > box_thresh]
+    #boxes = boxes[boxes[:, 4] > box_thresh]
 
     return boxes
 
