@@ -11,7 +11,6 @@ LOG.setLevel(logging.INFO)
 
 
 def preprocess(inputs, ctx):
-    LOG.info('inputs: {}'.format(inputs))
     image = inputs['image'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
     resized_im, ratio = resize_image(image)
@@ -25,7 +24,6 @@ def preprocess(inputs, ctx):
 
 
 def postprocess(outputs, ctx):
-    LOG.info('outputs: {}'.format(outputs))
     scores = outputs['scores']
     geometry = outputs['geometry']
     boxes = detect(scores, geometry)
@@ -63,8 +61,8 @@ def detect(score_map, geo_map, score_map_thresh=0.8, box_thresh=0.1, nms_thres=0
     print('{} text boxes before nms'.format(text_box_restored.shape[0]))
     boxes = np.zeros((text_box_restored.shape[0], 5), dtype=np.float32)
     text_box_restored = text_box_restored.reshape((-1, 4, 2))
-    b_max = np.max(text_box_restored, axis=0)
-    b_min = np.min(text_box_restored, axis=0)
+    b_max = np.max(text_box_restored, axis=1)
+    b_min = np.min(text_box_restored, axis=1)
     boxes[:, :4] = np.concatenate((b_min,b_max),axis=1)
     boxes[:, 4] = score_map[xy_text[:, 0], xy_text[:, 1]]
 
