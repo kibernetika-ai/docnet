@@ -67,7 +67,7 @@ def postprocess(outputs, ctx):
                 'type': 'box',
                 'text': 'test',
                 'score': float(scores[i]),
-                'image': text_img,
+                'image': encoded,
             }
         )
         i+=1
