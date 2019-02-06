@@ -52,7 +52,7 @@ def postprocess(outputs, ctx):
                       thickness=1)
         outboxes.append(box)
         outscores.append(scores[i])
-        logging.info('Box {}'.format(box))
+        logging.info('Box {} - {}'.format(box,box.shape))
         #text_img = image[box[0]:box[1],box[2]:box[3], ::-1]
         table.append(
             {
@@ -66,7 +66,8 @@ def postprocess(outputs, ctx):
     image = np.array(buf).tostring()
     return {
         'output': image,
-        'boxes': outboxes,
+
+        #'boxes': outboxes,
         'scores': outscores,
     }
 
