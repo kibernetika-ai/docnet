@@ -43,7 +43,8 @@ def postprocess(outputs, ctx):
     outboxes = []
     outscores = []
     table = []
-    for i,box in enumerate(boxes):
+    i = 0
+    for box in boxes:
         box = _sort_poly(box.astype(np.int32))
         if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
             continue
@@ -51,7 +52,7 @@ def postprocess(outputs, ctx):
                       thickness=1)
         outboxes.append(box)
         outscores.append(scores[i])
-        logging.info(box)
+        logging.info('Box {}'.format(box))
         #text_img = image[box[0]:box[1],box[2]:box[3], ::-1]
         table.append(
             {
@@ -60,6 +61,7 @@ def postprocess(outputs, ctx):
                 'score': float(scores[i]),
             }
         )
+        i+=1
     _, buf = cv2.imencode('.png', image[:, :, ::-1])
     image = np.array(buf).tostring()
     return {
