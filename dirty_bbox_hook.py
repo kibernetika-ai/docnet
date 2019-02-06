@@ -12,9 +12,9 @@ LOG.setLevel(logging.INFO)
 
 def preprocess(inputs, ctx):
     image = inputs['image'][0]
-    score_map_thresh = inputs['score_thresh'][0]
-    box_thresh = inputs['box_thresh'][0]
-    nms_thres = inputs['nms_thres'][0]
+    score_map_thresh = inputs.get('score_thresh',0.2)
+    box_thresh = inputs.get('box_thresh',0.4)
+    nms_thres = inputs.get('nms_thres',0.8)
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
     resized_im, ratio = resize_image(image)
     resized_im = resized_im.astype(np.float32)
