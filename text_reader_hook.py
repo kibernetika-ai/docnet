@@ -2,6 +2,7 @@ import cv2
 import time
 import numpy as np
 import logging
+import json
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -56,22 +57,26 @@ def postprocess(outputs, ctx):
         g_max = np.max(box, axis=0)
         g_min = np.min(box, axis=0)
         logging.info('Min: {} - Max: {}'.format(g_min,g_max))
-        #text_img = image[box[0]:box[1],box[2]:box[3], ::-1]
+        text_img = image[g_min[1]:g_max[1],g_min[0]:g_max[0], ::-1]
+        _, buf = cv2.imencode('.png', text_img)
+        text_img = np.array(buf).tostring()
         table.append(
             {
                 'type': 'box',
                 'text': 'test',
                 'score': float(scores[i]),
+                'image': text_img,
             }
         )
         i+=1
     _, buf = cv2.imencode('.png', image[:, :, ::-1])
     image = np.array(buf).tostring()
+    table = json.dumps(table)
     return {
         'output': image,
 
         #'boxes': outboxes,
-        'scores': outscores,
+        'table_output': table,
     }
 
 
