@@ -53,6 +53,9 @@ def postprocess(outputs, ctx):
         outboxes.append(box)
         outscores.append(scores[i])
         logging.info('Box {} - {}'.format(box,box.shape))
+        g_max = np.max(box, axis=0)
+        g_min = np.min(box, axis=0)
+        logging.info('Min: {} - Max: {}'.format(g_min,g_max))
         #text_img = image[box[0]:box[1],box[2]:box[3], ::-1]
         table.append(
             {
