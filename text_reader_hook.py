@@ -10,7 +10,7 @@ LOG.setLevel(logging.INFO)
 
 
 
-def preprocess_objects(inputs, ctx):
+def preprocess(inputs, ctx):
     image = inputs['image'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
     resized_im, ratio = resize_image(image)
