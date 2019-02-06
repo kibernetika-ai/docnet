@@ -8,11 +8,43 @@ import base64
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
+ENGLISH_CHAR_MAP = [
+    '#',
+    # Alphabet normal
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    '-', ':', '(', ')', '.', ',', '/'
+    # Apostrophe only for specific cases (eg. : O'clock)
+                                  "'",
+    " ",
+    # "end of sentence" character for CTC algorithm
+    '_'
+]
 
 
+def read_charset():
+    charset = {}
+    inv_charset = {}
+    for i, v in enumerate(ENGLISH_CHAR_MAP):
+        charset[i] = v
+        inv_charset[v] = i
+
+    return charset, inv_charset
 
 
-def preprocess(inputs, ctx):
+chrset_index = {}
+
+
+def init_hook(**params):
+    LOG.info("Init hooks {}".format(params))
+    charset, _ = read_charset()
+    global chrset_index
+    chrset_index = charset
+    LOG.info("Init hooks")
+
+
+def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
     resized_im, ratio = resize_image(image)
@@ -24,8 +56,7 @@ def preprocess(inputs, ctx):
     }
 
 
-
-def postprocess(outputs, ctx):
+def postprocess_boxes(outputs, ctx):
     scores = outputs['scores']
     geometry = outputs['geometry']
     boxes = detect(scores, geometry)
@@ -33,6 +64,7 @@ def postprocess(outputs, ctx):
     boxes = boxes[:, :8].reshape((-1, 4, 2))
     boxes[:, :, 0] /= ctx.ratio[1]
     boxes[:, :, 1] /= ctx.ratio[0]
+
     def _sort_poly(p):
         min_axis = np.argmin(np.sum(p, axis=1))
         p = p[[min_axis, (min_axis + 1) % 4, (min_axis + 2) % 4, (min_axis + 3) % 4]]
@@ -44,42 +76,87 @@ def postprocess(outputs, ctx):
     image = ctx.image
     outboxes = []
     outscores = []
-    table = []
+    to_predict = []
+    outimages = []
     i = 0
+    h = image.shape[0]
+    w = image.shape[1]
     for box in boxes:
         box = _sort_poly(box.astype(np.int32))
         if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
             continue
-        cv2.polylines(image[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0),
-                      thickness=1)
         outboxes.append(box)
         outscores.append(scores[i])
-        logging.info('Box {} - {}'.format(box,box.shape))
         g_max = np.max(box, axis=0)
         g_min = np.min(box, axis=0)
-        logging.info('Min: {} - Max: {}'.format(g_min,g_max))
-        text_img = image[g_min[1]:g_max[1],g_min[0]:g_max[0], ::-1]
+        text_img = image[max(g_min[1] - 5, 0):min(g_max[1] + 5, h), max(g_min[0] - 5, 0):min(g_max[0] + 5, w), ::-1]
         _, buf = cv2.imencode('.png', text_img)
-        text_img = np.array(buf).tostring()
-        encoded = base64.encodebytes(text_img).decode()
+        buf = np.array(buf).tostring()
+        encoded = base64.encodebytes(buf).decode()
+        outimages.append(encoded)
+        text_img = norm_image_for_text_prediction(text_img, 32, 320)
+        to_predict.append(text_img)
+    ctx.outboxes = outboxes
+    ctx.outscores = outscores
+    ctx.outimages = outimages
+    for i in to_predict:
+        yield {
+            'images': np.stack([i], axis=0),
+        }
+
+
+def final_postprocess(outputs_it, ctx):
+    image = ctx.image
+    n = 0
+    table = []
+    for outputs in outputs_it:
+        predictions = outputs['output']
+        line = []
+        end_line = len(chrset_index) - 1
+        for i in predictions[0]:
+            if i == end_line:
+                break;
+            t = chrset_index.get(i, -1)
+            if t == -1:
+                continue;
+            line.append(t)
+        line = ''.join(line)
         table.append(
             {
-                'type': 'box',
-                'text': 'test',
-                'score': float(scores[i]),
-                'image': encoded,
+                'type': 'text',
+                'text': line,
+                'score': float(ctx.outscores[n]),
+                'image': ctx.outimages[n]
             }
         )
-        i+=1
+    for box in ctx.outboxes:
+        cv2.polylines(image[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0),
+                      thickness=1)
     _, buf = cv2.imencode('.png', image[:, :, ::-1])
     image = np.array(buf).tostring()
+    table = []
     table = json.dumps(table)
     return {
         'output': image,
-
-        #'boxes': outboxes,
         'table_output': table,
     }
+
+
+def norm_image_for_text_prediction(im, infer_height, infer_width):
+    w, h = im.size
+    ration_w = max(w / infer_width, 1.0)
+    ration_h = max(h / infer_height, 1.0)
+    ratio = max(ration_h, ration_w)
+    if ratio > 1:
+        width = int(w / ratio)
+        height = int(h / ratio)
+        im = im.resize((width, height))
+    im = np.asarray(im)
+    im = im.astype(np.float32) / 127.5 - 1
+    pw = max(0, infer_width - im.shape[1])
+    ph = max(0, infer_height - im.shape[0])
+    im = np.pad(im, ((0, ph), (0, pw), (0, 0)), 'constant', constant_values=0)
+    return im
 
 
 def detect(score_map, geo_map, score_map_thresh=0.8, box_thresh=0.1, nms_thres=0.2):
@@ -269,6 +346,5 @@ def nms_locality(polys, thres=0.3):
     return standard_nms(np.array(S), thres)
 
 
-
-#preprocess = [preprocess_objects, preprocess_text]
-#postprocess = [postprocess_objects, postprocess_text]
+preprocess = [preprocess_boxes, None]
+postprocess = [postprocess_boxes, final_postprocess]
