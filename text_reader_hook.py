@@ -3,6 +3,7 @@ import time
 import numpy as np
 import logging
 import json
+import base64
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -60,6 +61,7 @@ def postprocess(outputs, ctx):
         text_img = image[g_min[1]:g_max[1],g_min[0]:g_max[0], ::-1]
         _, buf = cv2.imencode('.png', text_img)
         text_img = np.array(buf).tostring()
+        encoded = base64.encodebytes(text_img).decode()
         table.append(
             {
                 'type': 'box',
