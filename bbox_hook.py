@@ -52,7 +52,7 @@ def postprocess(outputs, ctx):
     _, buf = cv2.imencode('.png', image[:, :, ::-1])
     image = np.array(buf).tostring()
     return {
-        'image': image,
+        'output': image,
         'boxes': boxes,
         'scores': scores,
     }
