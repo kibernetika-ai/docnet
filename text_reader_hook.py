@@ -134,7 +134,6 @@ def final_postprocess(outputs_it, ctx):
                       thickness=1)
     _, buf = cv2.imencode('.png', image[:, :, ::-1])
     image = np.array(buf).tostring()
-    table = []
     table = json.dumps(table)
     return {
         'output': image,
