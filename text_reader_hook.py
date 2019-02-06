@@ -143,15 +143,15 @@ def final_postprocess(outputs_it, ctx):
 
 
 def norm_image_for_text_prediction(im, infer_height, infer_width):
-    w, h = im.size
+    w = im.shape[1]
+    h = im.shape[0]
     ration_w = max(w / infer_width, 1.0)
     ration_h = max(h / infer_height, 1.0)
     ratio = max(ration_h, ration_w)
     if ratio > 1:
         width = int(w / ratio)
         height = int(h / ratio)
-        im = im.resize((width, height))
-    im = np.asarray(im)
+        im = cv2.resize(im,(width,height),interpolation=cv2.INTER_LINEAR)
     im = im.astype(np.float32) / 127.5 - 1
     pw = max(0, infer_width - im.shape[1])
     ph = max(0, infer_height - im.shape[0])
