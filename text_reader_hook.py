@@ -124,11 +124,12 @@ def final_postprocess(outputs_it, ctx):
         table.append(
             {
                 'type': 'text',
-                'text': line,
-                'score': float(ctx.outscores[n]),
+                'name': line,
+                'probability': float(ctx.outscores[n]),
                 'image': ctx.outimages[n]
             }
         )
+        n += 1
     for box in ctx.outboxes:
         cv2.polylines(image[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True, color=(255, 255, 0),
                       thickness=1)
@@ -150,7 +151,7 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
     if ratio > 1:
         width = int(w / ratio)
         height = int(h / ratio)
-        im = cv2.resize(im,(width,height),interpolation=cv2.INTER_LINEAR)
+        im = cv2.resize(im, (width, height), interpolation=cv2.INTER_LINEAR)
     im = im.astype(np.float32) / 127.5 - 1
     pw = max(0, infer_width - im.shape[1])
     ph = max(0, infer_height - im.shape[0])
