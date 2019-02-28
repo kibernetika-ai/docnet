@@ -125,7 +125,7 @@ def final_postprocess(outputs_it, ctx):
             {
                 'type': 'text',
                 'name': line,
-                'probability': float(ctx.outscores[n]),
+                'prob': float(ctx.outscores[n]),
                 'image': ctx.outimages[n]
             }
         )
