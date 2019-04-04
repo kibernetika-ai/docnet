@@ -52,7 +52,7 @@ def unet(inputs, out_chans, chans, drop_prob, num_pool_layers,training=True):
         down_sample_layers += [output]
     i+=1
 
-    output = conv_block(pull[0], ch, drop_prob, 'down_{}'.format(i + 2), False, training)
+    output = conv_block(pull, ch, drop_prob, 'down_{}'.format(i + 2), False, training)
     logging.info('Down_{} - {}'.format(i+2,output.shape))
 
     for i in range(num_pool_layers):
