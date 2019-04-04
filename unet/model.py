@@ -79,12 +79,11 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     chief_hooks = []
     metrics = {}
     if mode != tf.estimator.ModeKeys.PREDICT:
-        flabels = tf.cast(labels, tf.float32)
-        original = features * flabels
+        original = features * labels
         predicted = features * mask
-        loss = tf.losses.absolute_difference(flabels, mask)
-        mse = tf.losses.mean_squared_error(flabels, mask)
-        nmse = tf.norm(flabels - mask) ** 2 / tf.norm(flabels) ** 2
+        loss = tf.losses.absolute_difference(labels, mask)
+        mse = tf.losses.mean_squared_error(labels, mask)
+        nmse = tf.norm(labels - mask) ** 2 / tf.norm(labels) ** 2
 
         global_step = tf.train.get_or_create_global_step()
         if training:
@@ -93,7 +92,6 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
             board_hook = MlBoardReporter({
                 "_step": global_step,
                 "_train_loss": loss,
-                '_train_lr': float(params['lr']),
                 '_train_mse': mse,
                 '_train_nmse': nmse}, every_steps=params['save_summary_steps'])
             chief_hooks = [board_hook]
