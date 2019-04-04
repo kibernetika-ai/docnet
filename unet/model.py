@@ -18,10 +18,10 @@ def data_fn(params, training):
             img = np.zeros((resolution,resolution,1),np.float32)
             for i in range(len(xmin)):
                 y1 = max(0,ymin[i])
-                y2 = min(160,ymax[i])
+                y2 = min(resolution,ymax[i])
                 x1 = max(0,xmin[i])
-                x2 = min(160,xmax[i])
-                img[y1[i]:y2[i],x1[i]:x2[i],0]=1
+                x2 = min(resolution,xmax[i])
+                img[y1:y2,x1:x2,0]=1
             return img
         def _parser(example):
             features = {
