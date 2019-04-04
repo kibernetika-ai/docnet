@@ -69,8 +69,7 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
         features = tf.reshape(features, [params['batch_size'], params['resolution'], params['resolution'], 3])
     training = (mode == tf.estimator.ModeKeys.TRAIN)
     out_chans = 1
-    logits = unet(features, out_chans, params['num_chans'], params['drop_prob'], params['num_pools'], training=training,
-                  unpool_layer=params['unpool'])
+    logits = unet(features, out_chans, params['num_chans'], params['drop_prob'], params['num_pools'], training=training)
     mask = tf.sigmoid(logits)
     loss = None
     train_op = None
