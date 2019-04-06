@@ -58,7 +58,6 @@ def convert_to_example(image_data, filename, labels, bboxes, oriented_bboxes, sh
         'image/object/bbox/y4': float_feature(get_list(oriented_bboxes, 7)),
         'image/object/bbox/label': int64_feature(labels),
         'image/format': bytes_feature(image_format),
-        'image/filename': bytes_feature(filename),
         'image/encoded': bytes_feature(image_data)}))
     return example
 
