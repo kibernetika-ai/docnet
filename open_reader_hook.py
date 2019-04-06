@@ -124,24 +124,7 @@ def decodeImageByJoin(cls,links,cls_threshold,link_threshold):
                 neighbour+=1
     return get_all((y,x),w,h,group_mask)
 
-def maskToBoxes(mask,min_area,min_height,image_size):
-    bboxes=[]
-    min_val, max_val, _,_ = cv2.minMaxLoc(mask)
-    print(max_val)
-    print(mask.shape)
-    if max_val>100:
-        return max_val
-    resized_mask = cv2.resize(mask,image_size,interpolation=cv2.INTER_NEAREST)
-    for i in range(int(max_val)):
-        bbox_mask = resized_mask == (i+1)
-        bbox_mask = bbox_mask.astype(np.int32)
-        #print(bbox_mask)
-        contours, _ = cv2.findContours(bbox_mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
-        if len(contours)<1:
-            continue
-        r = cv2.minAreaRect(contours[0])
-        bboxes.append(r)
-    return bboxes
+
 
 def maskToBoxes(mask,image_size):
     bboxes=[]
@@ -168,7 +151,7 @@ def postprocess_boxes(outputs, ctx):
     links = np.reshape(links,(links.shape[0],links.shape[1],int(links.shape[2]/2),2))
     links = softmax(links,axis=3)
     mask = decodeImageByJoin(cls[:,:,1],links[:,:,:,1],0.4,0.4)
-    bboxes = maskToBoxes(mask,(ctx.image.shape[0],ctx.image.shape[1]))
+    bboxes = maskToBoxes(mask,(ctx.image.shape[1],ctx.image.shape[0]))
     outimage = ctx.image
     for i in bboxes:
         box = cv2.boxPoints(i)
