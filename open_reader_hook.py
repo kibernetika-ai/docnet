@@ -167,12 +167,6 @@ def postprocess_boxes(outputs, ctx):
     links = softmax(links, axis=3)
     mask = decodeImageByJoin(cls[:, :, 1], links[:, :, :, 1], 0.4, 0.4)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
-    outimage = ctx.image[:,:,:]
-    for i in bboxes:
-        box = cv2.boxPoints(i)
-        box = np.int0(box)
-        outimage = cv2.drawContours(outimage, [box], 0, (0, 0, 255), 2)
-
     to_predict = []
     outimages = []
     outscores = []
@@ -193,7 +187,10 @@ def postprocess_boxes(outputs, ctx):
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         to_predict.append(np.expand_dims(text_img, 0))
 
-    ctx.image = outimage
+    for i in bboxes:
+        box = cv2.boxPoints(i)
+        box = np.int0(box)
+        ctx.image = cv2.drawContours(ctx.image, [box], 0, (0, 0, 255), 2)
     ctx.outscores = outscores
     ctx.outimages = outimages
     for i in to_predict:
