@@ -3,9 +3,12 @@ import numpy as np
 from unet.unet import unet
 from kibernetika.rpt import MlBoardReporter
 import glob
-
+import cv2
 
 def data_fn(params, training):
+
+    cv2.findContours(interpolation=cv2.INTER_NEAREST)
+
     data_set = params['data_set']
     datasets_files = []
     for tf_file in glob.iglob(data_set+'/*.record'):
