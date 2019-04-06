@@ -54,7 +54,7 @@ def preprocess_boxes(inputs, ctx):
             h = int(float(h) * 1280.0 / float(w))
             w = 1280
     else:
-        if ctx.h > 1280:
+        if h > 1280:
             w = int(w * 1280.0 / float(h))
             h = 1280
     image = cv2.resize(image, (w, h))
