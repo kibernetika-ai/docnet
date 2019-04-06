@@ -186,7 +186,7 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
                 labels.append(-1)
             else:
                 labels.append(1)
-        labels_text.append(bytes(txt, "utf8"))
+            labels_text.append(bytes(txt, "utf8"))
         with open(image_path,'rb') as f:
             image_data = f.read()
         shape = image.shape
