@@ -167,10 +167,10 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
     record_count = 0;
     for image_idx in image_idxes:
         if record_count % records_per_file == 0:
-            fid = record_count / records_per_file
+            fid = int(record_count / records_per_file)
             tfrecord_writer = tf.python_io.TFRecordWriter(os.path.join(out_path,'{}.record'.format(fid)))
 
-        record = fetcher.fetch_record(image_idx);
+        record = fetcher.fetch_record(image_idx)
         if record is None:
             logging.info('image {} does not exist'.format(image_idx + 1))
             continue;
@@ -182,9 +182,10 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
                 labels.append(-1)
             else:
                 labels.append(1)
-        image_data = tf.gfile.FastGFile(image_path, 'r').read()
+        with open(image_path,'rb') as f:
+            image_data = f.read()
         shape = image.shape
-        image_name = str(os.path.basename(image_path).split('.')[0])
+        image_name = os.path.basename(image_path).split('.')[0]
         example = convert_to_example(image_data, image_name, labels, txts, rect_bboxes, oriented_bboxes, shape)
         tfrecord_writer.write(example.SerializeToString())
 
