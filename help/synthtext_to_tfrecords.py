@@ -31,7 +31,7 @@ def bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
 
 
-def convert_to_example(image_data, filename, labels, labels_text, bboxes, oriented_bboxes, shape):
+def convert_to_example(image_data, filename, labels, bboxes, oriented_bboxes, shape):
     image_format = b'JPEG'
     oriented_bboxes = np.asarray(oriented_bboxes)
     if len(bboxes) == 0:
@@ -57,7 +57,6 @@ def convert_to_example(image_data, filename, labels, labels_text, bboxes, orient
         'image/object/bbox/x4': float_feature(get_list(oriented_bboxes, 6)),
         'image/object/bbox/y4': float_feature(get_list(oriented_bboxes, 7)),
         'image/object/bbox/label': int64_feature(labels),
-        'image/object/bbox/label_text': bytes_feature(labels_text),
         'image/format': bytes_feature(image_format),
         'image/filename': bytes_feature(filename),
         'image/encoded': bytes_feature(image_data)}))
@@ -129,7 +128,7 @@ class SynthTextDataFetcher():
         return is_valid, min_x / width, min_y /height, max_x / width, max_y / height, xys
 
     def get_txt(self, image_idx, word_idx):
-        txts = self.txts[image_idx];
+        txts = self.txts[image_idx]
         clean_txts = []
         for txt in txts:
             clean_txts += txt.split()
@@ -139,7 +138,7 @@ class SynthTextDataFetcher():
     def fetch_record(self, image_idx):
         image_path = self.get_image_path(image_idx)
         if not (os.path.exists(image_path)):
-            return None;
+            return None
         img = cv2.imread(image_path)
         h, w = img.shape[0:-1]
         num_words = self.get_num_words(image_idx)
@@ -150,7 +149,7 @@ class SynthTextDataFetcher():
             xys = self.get_word_bbox(image_idx, word_idx)
             is_valid, min_x, min_y, max_x, max_y, xys = self.normalize_bbox(xys, width = w, height = h)
             if not is_valid:
-                continue;
+                continue
             rect_bboxes.append([min_x, min_y, max_x, max_y])
             xys = np.reshape(np.transpose(xys), -1)
             full_bboxes.append(xys)
@@ -164,7 +163,7 @@ class SynthTextDataFetcher():
 
 
 def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
-    record_count = 0;
+    record_count = 0
     for image_idx in image_idxes:
         if record_count % records_per_file == 0:
             fid = int(record_count / records_per_file)
@@ -173,7 +172,7 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
         record = fetcher.fetch_record(image_idx)
         if record is None:
             logging.info('image {} does not exist'.format(image_idx + 1))
-            continue;
+            continue
         record_count += 1
         image_path, image, txts, rect_bboxes, oriented_bboxes = record
         labels = []
@@ -186,7 +185,7 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
             image_data = f.read()
         shape = image.shape
         image_name = os.path.basename(image_path).split('.')[0]
-        example = convert_to_example(image_data, image_name, labels, txts, rect_bboxes, oriented_bboxes, shape)
+        example = convert_to_example(image_data, image_name, labels, rect_bboxes, oriented_bboxes, shape)
         tfrecord_writer.write(example.SerializeToString())
 
 def cvt_to_tfrecords(train_path,test_path ,test,data_path, gt_path, records_per_file = 50000):
