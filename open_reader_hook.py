@@ -167,7 +167,7 @@ def postprocess_boxes(outputs, ctx):
     links = softmax(links, axis=3)
     mask = decodeImageByJoin(cls[:, :, 1], links[:, :, :, 1], 0.4, 0.4)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
-    outimage = ctx.image
+    outimage = ctx.image[:,:,:]
     for i in bboxes:
         box = cv2.boxPoints(i)
         box = np.int0(box)
