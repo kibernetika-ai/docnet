@@ -31,7 +31,7 @@ def bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
 
 
-def convert_to_example(image_data, filename, labels, bboxes, oriented_bboxes, shape):
+def convert_to_example(image_data, filename, labels,labels_text, bboxes, oriented_bboxes, shape):
     image_format = b'JPEG'
     oriented_bboxes = np.asarray(oriented_bboxes)
     if len(bboxes) == 0:
@@ -57,7 +57,9 @@ def convert_to_example(image_data, filename, labels, bboxes, oriented_bboxes, sh
         'image/object/bbox/x4': float_feature(get_list(oriented_bboxes, 6)),
         'image/object/bbox/y4': float_feature(get_list(oriented_bboxes, 7)),
         'image/object/bbox/label': int64_feature(labels),
+        'image/object/bbox/label_text': bytes_feature(labels_text),
         'image/format': bytes_feature(image_format),
+        'image/filename': bytes_feature(bytes(filename, "utf8")),
         'image/encoded': bytes_feature(image_data)}))
     return example
 
@@ -163,9 +165,12 @@ class SynthTextDataFetcher():
 
 def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
     record_count = 0
+    tfrecord_writer = None
     for image_idx in image_idxes:
         if record_count % records_per_file == 0:
             fid = int(record_count / records_per_file)
+            if tfrecord_writer is not None:
+                tfrecord_writer.close()
             tfrecord_writer = tf.python_io.TFRecordWriter(os.path.join(out_path,'{}.record'.format(fid)))
 
         record = fetcher.fetch_record(image_idx)
@@ -175,17 +180,21 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
         record_count += 1
         image_path, image, txts, rect_bboxes, oriented_bboxes = record
         labels = []
+        labels_text = []
         for txt in txts:
             if len(txt) < 2:
                 labels.append(-1)
             else:
                 labels.append(1)
+        labels_text.append(bytes(txt, "utf8"))
         with open(image_path,'rb') as f:
             image_data = f.read()
         shape = image.shape
         image_name = os.path.basename(image_path).split('.')[0]
-        example = convert_to_example(image_data, image_name, labels, rect_bboxes, oriented_bboxes, shape)
+        example = convert_to_example(image_data, image_name, labels,labels_text,rect_bboxes, oriented_bboxes, shape)
         tfrecord_writer.write(example.SerializeToString())
+    if tfrecord_writer is not None:
+        tfrecord_writer.close()
 
 def cvt_to_tfrecords(train_path,test_path ,test,data_path, gt_path, records_per_file = 50000):
 
