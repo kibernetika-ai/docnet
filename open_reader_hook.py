@@ -173,11 +173,11 @@ def postprocess_boxes(outputs, ctx):
         box = np.int0(box)
         outimage = cv2.drawContours(outimage, [box], 0, (0, 0, 255), 2)
 
-    cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
     to_predict = []
     outimages = []
     outscores = []
     for i in range(len(bboxes)):
+        cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
         box = np.int0(cv2.boxPoints(bboxes[i]))
         mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
         mask = ctx.image * mask
