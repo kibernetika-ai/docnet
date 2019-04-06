@@ -4,7 +4,8 @@ import argparse
 import logging
 import numpy as np
 import os
-import util
+import cv2
+import scipy.io as sio
 
 def int64_feature(value):
     """Wrapper for inserting int64 features into Example proto.
@@ -68,16 +69,16 @@ class SynthTextDataFetcher():
         self.root_path = root_path
         self._load_mat()
 
-    @util.dec.print_calling
+
     def _load_mat(self):
-        data = util.io.load_mat(self.mat_path)
+        data = sio.loadmat(self.mat_path)
         self.image_paths = data['imnames'][0]
         self.image_bbox = data['wordBB'][0]
         self.txts = data['txt'][0]
         self.num_images =  len(self.image_paths)
 
     def get_image_path(self, idx):
-        image_path = util.io.join_path(self.root_path, self.image_paths[idx][0])
+        image_path = os.path.join(self.root_path, self.image_paths[idx][0])
         return image_path
 
     def get_num_words(self, idx):
@@ -137,32 +138,32 @@ class SynthTextDataFetcher():
 
     def fetch_record(self, image_idx):
         image_path = self.get_image_path(image_idx)
-        if not (util.io.exists(image_path)):
+        if not (os.path.exists(image_path)):
             return None;
-        img = util.img.imread(image_path)
-        h, w = img.shape[0:-1];
+        img = cv2.imread(image_path)
+        h, w = img.shape[0:-1]
         num_words = self.get_num_words(image_idx)
         rect_bboxes = []
         full_bboxes = []
         txts = []
         for word_idx in range(num_words):
-            xys = self.get_word_bbox(image_idx, word_idx);
+            xys = self.get_word_bbox(image_idx, word_idx)
             is_valid, min_x, min_y, max_x, max_y, xys = self.normalize_bbox(xys, width = w, height = h)
             if not is_valid:
                 continue;
             rect_bboxes.append([min_x, min_y, max_x, max_y])
             xys = np.reshape(np.transpose(xys), -1)
-            full_bboxes.append(xys);
-            txt = self.get_txt(image_idx, word_idx);
-            txts.append(txt);
+            full_bboxes.append(xys)
+            txt = self.get_txt(image_idx, word_idx)
+            txts.append(txt)
         if len(rect_bboxes) == 0:
-            return None;
+            return None
 
         return image_path, img, txts, rect_bboxes, full_bboxes
 
 
 
-def convert(image_idxes,fetcher,out_path , data_path, records_per_file = 50000):
+def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
     record_count = 0;
     for image_idx in image_idxes:
         if record_count % records_per_file == 0:
@@ -183,7 +184,7 @@ def convert(image_idxes,fetcher,out_path , data_path, records_per_file = 50000):
                 labels.append(1)
         image_data = tf.gfile.FastGFile(image_path, 'r').read()
         shape = image.shape
-        image_name = str(util.io.get_filename(image_path).split('.')[0])
+        image_name = str(os.path.basename(image_path).split('.')[0])
         example = convert_to_example(image_data, image_name, labels, txts, rect_bboxes, oriented_bboxes, shape)
         tfrecord_writer.write(example.SerializeToString())
 
@@ -196,8 +197,8 @@ def cvt_to_tfrecords(train_path,test_path ,test,data_path, gt_path, records_per_
     train_count = len(image_indexes)-test_count
     train_indxes = image_indexes[:train_count]
     test_indexes = image_indexes[train_count:]
-    convert(train_indxes,fetcher,train_path , data_path, records_per_file)
-    convert(test_indexes,fetcher,test_path , data_path, records_per_file)
+    convert(train_indxes,fetcher,train_path , records_per_file)
+    convert(test_indexes,fetcher,test_path, records_per_file)
 
 def create_arg_parser():
     parser = argparse.ArgumentParser()
