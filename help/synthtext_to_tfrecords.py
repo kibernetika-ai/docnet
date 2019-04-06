@@ -168,6 +168,7 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
     tfrecord_writer = None
     for image_idx in image_idxes:
         if record_count % records_per_file == 0:
+            logging.info("{} Records {}".format(out_path,record_count))
             fid = int(record_count / records_per_file)
             if tfrecord_writer is not None:
                 tfrecord_writer.close()
