@@ -191,7 +191,7 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
 def cvt_to_tfrecords(train_path,test_path ,test,data_path, gt_path, records_per_file = 50000):
 
     fetcher = SynthTextDataFetcher(root_path = data_path, mat_path = gt_path)
-    image_indexes = range(fetcher.num_images)
+    image_indexes = [i for i in range(fetcher.num_images)]
     np.random.shuffle(image_indexes)
     test_count = int(len(image_indexes)/100*test)
     train_count = len(image_indexes)-test_count
