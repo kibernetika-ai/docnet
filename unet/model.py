@@ -3,7 +3,7 @@ from unet.unet import unet
 from kibernetika.rpt import MlBoardReporter
 
 
-def _flat_pixel_cls_values(self, values):
+def _flat_pixel_cls_values(values):
     shape = values.shape.as_list()
     values = tf.reshape(values, shape=[shape[0], -1, shape[-1]])
     return values
