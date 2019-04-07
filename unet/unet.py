@@ -69,6 +69,8 @@ def unet(inputs, out_chans, chans, drop_prob, num_pool_layers,training=True):
         output = conv_block(output, ch, drop_prob, 'up_{}'.format(i + 1), False, training)
 
     output = tf.layers.conv2d(output, ch, kernel_size=1, padding='same', name="conv_1")
-    output = tf.layers.conv2d(output, out_chans, kernel_size=1, padding='same', name="conv_2")
-    output = tf.layers.conv2d(output, out_chans, kernel_size=1, padding='same', name="final")
-    return output
+    output1 = tf.layers.conv2d(output, out_chans[0], kernel_size=1, padding='same', name="conv_2_mask")
+    output2 = tf.layers.conv2d(output1, out_chans[0], kernel_size=1, padding='same', name="final_mask")
+    output3 = tf.layers.conv2d(output, out_chans[1], kernel_size=1, padding='same', name="conv_2_links")
+    output4 = tf.layers.conv2d(output3, out_chans[1], kernel_size=1, padding='same', name="final_links")
+    return output2,output4

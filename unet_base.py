@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 import logging
 from unet.model import BoxUnet
-from unet.model import data_fn
+from unet.data import data_fn
 import os
 import json
 import time
