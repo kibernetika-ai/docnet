@@ -44,7 +44,7 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
                    labels['pixel_link_label'], labels['pixel_link_weight'])
         loss = tf.get_collection(tf.GraphKeys.LOSSES)
         loss = tf.add_n(loss)
-        original = features * labels['pixel_cls_label']
+        original = features * tf.cast(labels['pixel_cls_label'],tf.float32)
         predicted = features * pixel_pos_scores
         global_step = tf.train.get_or_create_global_step()
         if training:
