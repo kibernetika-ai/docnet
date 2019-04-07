@@ -193,6 +193,7 @@ def data_fn(params, training):
             original_h = tf.cast(res['image/shape'][0], tf.int32)
             img = tf.reshape(img, [1, original_h, original_w, 3])
             img = tf.image.resize_images(img, [resolution, resolution])[0]
+            img = tf.cast(img,tf.float32)/255.0
             x1 = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/x1']), tf.float32)
             x2 = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/x2']), tf.float32)
             x3 = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/x3']), tf.float32)
