@@ -188,7 +188,7 @@ def data_fn(params, training):
                     tf.VarLenFeature(tf.int64)
             }
             res = tf.parse_single_example(example, features)
-            img = tf.image.decode_jpg(res['image/encoded'], channels=3)
+            img = tf.image.decode_jpeg(res['image/encoded'], channels=3)
             original_w = tf.cast(res['image/shape'][1], tf.int32)
             original_h = tf.cast(res['image/shape'][0], tf.int32)
             img = tf.reshape(img, [1, original_h, original_w, 3])
