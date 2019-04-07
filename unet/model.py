@@ -40,8 +40,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     if mode != tf.estimator.ModeKeys.PREDICT:
         pixel_cls_loss,pixel_pos_link_loss,pixel_neg_link_loss = build_loss(params,
                    pixel_cls_logits_flatten, pixel_cls_scores_flatten, pixel_link_logits,
-                   labels['pixel_cls_labels'], labels['pixel_cls_weights'],
-                   labels['pixel_link_labels'], labels['pixel_link_weights'])
+                   labels['pixel_cls_label'], labels['pixel_cls_weight'],
+                   labels['pixel_link_label'], labels['pixel_link_weight'])
         loss = tf.get_collection(tf.GraphKeys.LOSSES)
         loss = tf.add_n(loss)
         original = features * labels['pixel_cls_labels']
