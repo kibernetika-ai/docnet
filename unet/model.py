@@ -20,13 +20,9 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
                                                params['num_pools'], training=training)
 
     pixel_cls_scores = tf.nn.softmax(pixel_cls_logits)
-    pixel_cls_logits_flatten = _flat_pixel_cls_values(pixel_cls_logits)
-    pixel_cls_scores_flatten = _flat_pixel_cls_values(pixel_cls_scores)
     shape = tf.shape(pixel_link_logits)
     pixel_link_logits = tf.reshape(pixel_link_logits, [shape[0], shape[1], shape[2], 8, 2])
-
     pixel_link_scores = tf.nn.softmax(pixel_link_logits)
-
     pixel_pos_scores = pixel_cls_scores[:, :, :, 1]
     link_pos_scores = pixel_link_scores[:, :, :, :, 1]
 
@@ -38,6 +34,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     chief_hooks = []
     metrics = {}
     if mode != tf.estimator.ModeKeys.PREDICT:
+        pixel_cls_logits_flatten = _flat_pixel_cls_values(pixel_cls_logits)
+        pixel_cls_scores_flatten = _flat_pixel_cls_values(pixel_cls_scores)
         pixel_cls_loss,pixel_pos_link_loss,pixel_neg_link_loss = build_loss(params,
                    pixel_cls_logits_flatten, pixel_cls_scores_flatten, pixel_link_logits,
                    labels['pixel_cls_label'], labels['pixel_cls_weight'],
