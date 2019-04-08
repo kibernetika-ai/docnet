@@ -57,10 +57,10 @@ def preprocess_boxes(inputs, ctx):
         if h > 1280:
             w = int(w * 1280.0 / float(h))
             h = 1280
-    image = cv2.resize(image[:,:,::-1], (w, h))
+    image = cv2.resize(image[:, :, ::-1], (w, h))
     ctx.image = image
     image = cv2.resize(image, (320, 320))
-    image = image.astype(np.float32)/255.0
+    image = image.astype(np.float32) / 255.0
     image = np.expand_dims(image, 0)
     return {
         'image': image,
@@ -125,7 +125,7 @@ def decodeImageByJoin(cls, links, cls_threshold, link_threshold):
     return get_all((y, x), w, h, group_mask)
 
 
-def maskToBoxes(mask,image_size,min_area=300, min_height=10):
+def maskToBoxes(mask, image_size, min_area=300, min_height=10):
     bboxes = []
     min_val, max_val, _, _ = cv2.minMaxLoc(mask)
     resized_mask = cv2.resize(mask, image_size, interpolation=cv2.INTER_NEAREST)
@@ -137,9 +137,9 @@ def maskToBoxes(mask,image_size,min_area=300, min_height=10):
             continue
         r = cv2.minAreaRect(contours[0])
 
-        if min(r[1][0], r[1][0]) < min_height:
+        if min(r[1][0], r[1][1]) < min_height:
             continue
-        if (r[1][0]*r[1][0] < min_area):
+        if r[1][0] * r[1][1] < min_area:
             continue
         bboxes.append(r)
     return bboxes
@@ -161,7 +161,7 @@ def postprocess_boxes(outputs, ctx):
         maxp = np.max(box, axis=0)
         minp = np.min(box, axis=0)
         text_img = mask[minp[1]:maxp[1], minp[0]:maxp[0], :]
-        _, buf = cv2.imencode('.png', text_img[:,:,::-1])
+        _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
         outimages.append(encoded)
@@ -205,7 +205,7 @@ def final_postprocess(outputs_it, ctx):
             }
         )
         n += 1
-    _, buf = cv2.imencode('.png', ctx.image[:,:,::-1])
+    _, buf = cv2.imencode('.png', ctx.image[:, :, ::-1])
     image = np.array(buf).tostring()
     table = json.dumps(table)
     return {
