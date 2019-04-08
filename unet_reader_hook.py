@@ -195,9 +195,11 @@ def postprocess_boxes(outputs, ctx):
     out_mask = None
     if ctx.out_type == 1:
         out_mask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
+        out_mask[out_mask<ctx.pixel_threshold] = 0
     elif ctx.out_type > 1:
         out_mask = cv2.resize(links[:, :, ctx.out_type - 2], (ctx.image.shape[1], ctx.image.shape[0]),
                               interpolation=cv2.INTER_NEAREST)
+        out_mask[out_mask<ctx.link_threshold] = 0
 
     mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
