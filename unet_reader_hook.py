@@ -172,7 +172,7 @@ def postprocess_boxes(outputs, ctx):
     cls = outputs['pixel_pos_scores'][0]
     links = outputs['link_pos_scores'][0]
     #testmask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
-    mask = decodeImageByJoin(cls, links, 0.2, 0)
+    mask = decodeImageByJoin(cls, links, 0.5, 0)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
     to_predict = []
     outimages = []
