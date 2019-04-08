@@ -123,7 +123,8 @@ def main(args):
             'lr.lr-gamma': args.lr_gamma,
             'weight-decay': args.weight_decay,
             'checkpoint_path': str(args.checkpoint_dir),
-            'resolution': args.resolution
+            'resolution': args.resolution,
+            'up_type': args.up_type,
         })
         train('train', args.checkpoint_dir, params)
     else:
@@ -214,6 +215,11 @@ def create_arg_parser():
         type=str,
         default='RMSPropOptimizer',
         help='Optimizer',
+    )
+    parser.add_argument(
+        '--up_type',
+        type=str,
+        default='join',
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.set_defaults(worker=False)

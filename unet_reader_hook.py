@@ -44,8 +44,25 @@ def init_hook(**params):
     LOG.info("Init hooks")
 
 
+out_types = {
+    'Box': 0,
+    'Mask': 1,
+    'Link1': 2,
+    'Link2': 3,
+    'Link3': 4,
+    'Link4': 5,
+    'Link5': 6,
+    'Link6': 7,
+    'Link7': 8,
+    'Link8': 9,
+}
+
+
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
+    ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
+    ctx.link_threshold = float(inputs.get('link_threshold', 0))
+    ctx.out_type = [out_types.get(inputs.get('out_type', ['Box'])[0].decode("utf-8"), 0)]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
     w = image.shape[1]
     h = image.shape[0]
@@ -138,13 +155,14 @@ def maskToBoxes(mask, image_size, min_area=200, min_height=6):
         r = cv2.minAreaRect(contours[0])
 
         if min(r[1][0], r[1][1]) < min_height:
-            logging.info('Skip size box {} {}'.format(r,i+1))
+            logging.info('Skip size box {} {}'.format(r, i + 1))
             continue
         if r[1][0] * r[1][1] < min_area:
-            logging.info('Skip area box {}'.format(r, i+1))
+            logging.info('Skip area box {} {}'.format(r, i + 1))
             continue
         bboxes.append(r)
     return bboxes
+
 
 def rotate_bound(image, angle):
     # grab the dimensions of the image and then determine the
@@ -170,11 +188,18 @@ def rotate_bound(image, angle):
     # perform the actual rotation and return the image
     return cv2.warpAffine(image, M, (nW, nH))
 
+
 def postprocess_boxes(outputs, ctx):
     cls = outputs['pixel_pos_scores'][0]
     links = outputs['link_pos_scores'][0]
-    testmask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
-    mask = decodeImageByJoin(cls, links, 0.5, 0)
+    out_mask = None
+    if ctx.out_type == 1:
+        out_mask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
+    elif ctx.out_type > 1:
+        out_mask = cv2.resize(links[:, :, ctx.out_type - 2], (ctx.image.shape[1], ctx.image.shape[0]),
+                              interpolation=cv2.INTER_NEAREST)
+
+    mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
     to_predict = []
     outimages = []
@@ -186,29 +211,31 @@ def postprocess_boxes(outputs, ctx):
         mask = ctx.image * mask
         maxp = np.max(box, axis=0)
         minp = np.min(box, axis=0)
-        y1 = max(0,minp[1])
-        y2 = min(ctx.image.shape[0],maxp[1])
-        x1 = max(0,minp[0])
-        x2 = min(ctx.image.shape[1],maxp[0])
+        y1 = max(0, minp[1])
+        y2 = min(ctx.image.shape[0], maxp[1])
+        x1 = max(0, minp[0])
+        x2 = min(ctx.image.shape[1], maxp[0])
         text_img = mask[y1:y2, x1:x2, :]
-        if text_img.shape[0] < 1 or text_img.shape[1]<1:
+        if text_img.shape[0] < 1 or text_img.shape[1] < 1:
             logging.info('Skip box: {}'.format(box))
             continue
-        #text_img = rotate_bound(text_img,-1*bboxes[i][2])
+        # text_img = rotate_bound(text_img,-1*bboxes[i][2])
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
         outimages.append(encoded)
-        outscores.append(-1*bboxes[i][2])
+        outscores.append(-1 * bboxes[i][2])
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         to_predict.append(np.expand_dims(text_img, 0))
 
-    #for i in bboxes:
-    #    box = cv2.boxPoints(i)
-    #   box = np.int0(box)
-    #    ctx.image = cv2.drawContours(ctx.image, [box], 0, (255, 0, 0), 2)
-    ctx.image = ctx.image.astype(np.float32)*np.expand_dims(testmask,2)
-    ctx.image = ctx.image.astype(np.uint8)
+    if out_mask is not None:
+        ctx.image = ctx.image.astype(np.float32) * np.expand_dims(out_mask, 2)
+        ctx.image = ctx.image.astype(np.uint8)
+    else:
+        for i in bboxes:
+            box = cv2.boxPoints(i)
+            box = np.int0(box)
+            ctx.image = cv2.drawContours(ctx.image, [box], 0, (255, 0, 0), 2)
     ctx.outscores = outscores
     ctx.outimages = outimages
     for i in to_predict:

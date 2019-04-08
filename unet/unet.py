@@ -40,7 +40,22 @@ def unpool(pool, ind, ksize=[1, 2, 2, 1], name=None):
         ret = tf.scatter_nd(indices, values, output_shape)
         return ret
 
-def unet(inputs, out_chans, chans, drop_prob, num_pool_layers,training=True):
+def upnet(name,output,num_pool_layers,down_sample_layers,ch,drop_prob,training):
+    for i in range(num_pool_layers):
+        down = down_sample_layers.pop()
+        _,w,h,f = down.shape
+        output = tf.layers.conv2d_transpose(output,filters=f,kernel_size=[3, 3],strides=[2, 2],padding='SAME',
+                                            activation=None,
+                                            kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
+                                            name='unpool{}_{}'.format(name,i + 1))
+        output = tf.concat([output, down], 3)
+        logging.info('Up_{}_{} - {}'.format(name,i+1,output.shape))
+        if i < (num_pool_layers-1):
+            ch //= 2
+        output = conv_block(output, ch, drop_prob, 'up{}_{}'.format(name,i + 1), False, training)
+    return output
+
+def unet(inputs, out_chans, chans, drop_prob, num_pool_layers,training=True,up_type='join'):
     output, pull = conv_block(inputs, chans, drop_prob, 'down_1', True, training)
     logging.info('Down_1 - {}'.format(output.shape))
     down_sample_layers = [output]
@@ -52,25 +67,24 @@ def unet(inputs, out_chans, chans, drop_prob, num_pool_layers,training=True):
         down_sample_layers += [output]
     i+=1
 
-    output = conv_block(pull, ch, drop_prob, 'down_{}'.format(i + 2), False, training)
+    final_down = conv_block(pull, ch, drop_prob, 'down_{}'.format(i + 2), False, training)
     logging.info('Down_{} - {}'.format(i+2,output.shape))
 
-    for i in range(num_pool_layers):
-        down = down_sample_layers.pop()
-        _,w,h,f = down.shape
-        output = tf.layers.conv2d_transpose(output,filters=f,kernel_size=[3, 3],strides=[2, 2],padding='SAME',
-                                                activation=None,
-                                                kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
-                                                name='unpool_{}'.format(i + 1))
-        output = tf.concat([output, down], 3)
-        logging.info('Up_{} - {}'.format(i+1,output.shape))
-        if i < (num_pool_layers-1):
-            ch //= 2
-        output = conv_block(output, ch, drop_prob, 'up_{}'.format(i + 1), False, training)
-
-    output = tf.layers.conv2d(output, ch, kernel_size=1, padding='same', name="conv_1")
-    output1 = tf.layers.conv2d(output, out_chans[0], kernel_size=1, padding='same', name="conv_2_mask")
-    output2 = tf.layers.conv2d(output1, out_chans[0], kernel_size=1, padding='same', name="final_mask")
-    output3 = tf.layers.conv2d(output, out_chans[1], kernel_size=1, padding='same', name="conv_2_links")
-    output4 = tf.layers.conv2d(output3, out_chans[1], kernel_size=1, padding='same', name="final_links")
-    return output2,output4
+    if up_type=='seprate':
+        outs = []
+        for i,out_chan in enumerate(out_chans):
+            name = '_{}'.format(i)
+            output = upnet(name,final_down,num_pool_layers,down_sample_layers,ch,drop_prob,training)
+            output = tf.layers.conv2d(output, ch, kernel_size=1, padding='same', name="conv{}_1".format(name))
+            output = tf.layers.conv2d(output, out_chan, kernel_size=1, padding='same', name="conv{}_2".format(name))
+            output = tf.layers.conv2d(output, out_chan, kernel_size=1, padding='same', name="final{}".format(name))
+            outs.append(output)
+        return outs
+    else:
+        output = upnet('',final_down,num_pool_layers,down_sample_layers,ch,drop_prob,training)
+        output = tf.layers.conv2d(output, ch, kernel_size=1, padding='same', name="conv_1")
+        output1 = tf.layers.conv2d(output, out_chans[0], kernel_size=1, padding='same', name="conv_2_mask")
+        output2 = tf.layers.conv2d(output1, out_chans[0], kernel_size=1, padding='same', name="final_mask")
+        output3 = tf.layers.conv2d(output, out_chans[1], kernel_size=1, padding='same', name="conv_2_links")
+        output4 = tf.layers.conv2d(output3, out_chans[1], kernel_size=1, padding='same', name="final_links")
+        return [output2,output4]

@@ -46,6 +46,8 @@ def init_hook(**params):
 
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
+    ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
+    ctx.link_threshold = float(inputs.get('link_threshold', 0))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
     w = image.shape[1]
     h = image.shape[0]
@@ -165,7 +167,7 @@ def postprocess_boxes(outputs, ctx):
     cls = softmax(cls, axis=2)
     links = np.reshape(links, (links.shape[0], links.shape[1], int(links.shape[2] / 2), 2))
     links = softmax(links, axis=3)
-    mask = decodeImageByJoin(cls[:, :, 1], links[:, :, :, 1], 0.4, 0.4)
+    mask = decodeImageByJoin(cls[:, :, 1], links[:, :, :, 1], ctx.pixel_threshold, ctx.link_threshold)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
     to_predict = []
     outimages = []
@@ -177,7 +179,14 @@ def postprocess_boxes(outputs, ctx):
         mask = ctx.image * mask
         maxp = np.max(box, axis=0)
         minp = np.min(box, axis=0)
-        text_img = mask[minp[1]:maxp[1], minp[0]:maxp[0], :]
+        y1 = max(0, minp[1])
+        y2 = min(ctx.image.shape[0], maxp[1])
+        x1 = max(0, minp[0])
+        x2 = min(ctx.image.shape[1], maxp[0])
+        text_img = mask[y1:y2, x1:x2, :]
+        if text_img.shape[0] < 1 or text_img.shape[1] < 1:
+            logging.info('Skip box: {}'.format(box))
+            continue
         _, buf = cv2.imencode('.png', text_img)
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()

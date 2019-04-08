@@ -16,8 +16,11 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
         features = tf.reshape(features, [params['batch_size'], params['resolution'], params['resolution'], 3])
     training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-    pixel_cls_logits, pixel_link_logits = unet(features, [2, 16], params['num_chans'], params['drop_prob'],
-                                               params['num_pools'], training=training)
+    outs = unet(features, [2, 16], params['num_chans'], params['drop_prob'],
+                                               params['num_pools'], training=training,up_type=params['up_type'])
+
+    pixel_cls_logits = outs[0]
+    pixel_link_logits = outs[1]
 
     pixel_cls_scores = tf.nn.softmax(pixel_cls_logits)
     shape = tf.shape(pixel_link_logits)
@@ -36,14 +39,16 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     if mode != tf.estimator.ModeKeys.PREDICT:
         pixel_cls_logits_flatten = _flat_pixel_cls_values(pixel_cls_logits)
         pixel_cls_scores_flatten = _flat_pixel_cls_values(pixel_cls_scores)
-        pixel_cls_loss,pixel_pos_link_loss,pixel_neg_link_loss = build_loss(params,
-                   pixel_cls_logits_flatten, pixel_cls_scores_flatten, pixel_link_logits,
-                   labels['pixel_cls_label'], labels['pixel_cls_weight'],
-                   labels['pixel_link_label'], labels['pixel_link_weight'])
-        loss = tf.get_collection(tf.GraphKeys.LOSSES)
-        loss = tf.add_n(loss)
-        original = features * tf.expand_dims(tf.cast(labels['pixel_cls_label'],tf.float32),-1)
-        predicted = features * tf.expand_dims(pixel_pos_scores,-1)
+        loss, pixel_cls_loss, pixel_pos_link_loss, pixel_neg_link_loss = build_loss(params,
+                                                                                    pixel_cls_logits_flatten,
+                                                                                    pixel_cls_scores_flatten,
+                                                                                    pixel_link_logits,
+                                                                                    labels['pixel_cls_label'],
+                                                                                    labels['pixel_cls_weight'],
+                                                                                    labels['pixel_link_label'],
+                                                                                    labels['pixel_link_weight'])
+        original = features * tf.expand_dims(tf.cast(labels['pixel_cls_label'], tf.float32), -1)
+        predicted = features * tf.expand_dims(pixel_pos_scores, -1)
         global_step = tf.train.get_or_create_global_step()
         if training:
             board_hook = MlBoardReporter({
@@ -69,12 +74,12 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     else:
         export_outputs = {
             tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: tf.estimator.export.PredictOutput(
-                {'pixel_pos_scores':pixel_pos_scores,'link_pos_scores':link_pos_scores})}
+                {'pixel_pos_scores': pixel_pos_scores, 'link_pos_scores': link_pos_scores})}
 
     return tf.estimator.EstimatorSpec(
         mode=mode,
         eval_metric_ops=metrics,
-        predictions= {'pixel_pos_scores':pixel_pos_scores,'link_pos_scores':link_pos_scores},
+        predictions={'pixel_pos_scores': pixel_pos_scores, 'link_pos_scores': link_pos_scores},
         training_chief_hooks=chief_hooks,
         loss=loss,
         training_hooks=hooks,
@@ -190,11 +195,11 @@ def build_loss(params,
 
         #             pixel_cls_loss = tf.cond(n_pos > 0, has_pos, no_pos)
         pixel_cls_loss = has_pos()
-        tf.add_to_collection(tf.GraphKeys.LOSSES, pixel_cls_loss * pixel_cls_loss_weight_lambda)
+        total_loss = pixel_cls_loss * pixel_cls_loss_weight_lambda
 
     with tf.name_scope('pixel_link_loss'):
         def no_pos():
-            return tf.constant(.0), tf.constant(.0);
+            return tf.constant(.0), tf.constant(.0)
 
         def has_pos():
             pixel_link_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -218,10 +223,9 @@ def build_loss(params,
         pixel_link_loss = pixel_pos_link_loss + \
                           pixel_neg_link_loss * pixel_link_neg_loss_weight_lambda
 
-        tf.add_to_collection(tf.GraphKeys.LOSSES,
-                             pixel_link_loss_weight * pixel_link_loss)
+        total_loss += pixel_link_loss_weight * pixel_link_loss
 
     tf.summary.scalar('pixel_cls_loss', pixel_cls_loss)
     tf.summary.scalar('pixel_pos_link_loss', pixel_pos_link_loss)
     tf.summary.scalar('pixel_neg_link_loss', pixel_neg_link_loss)
-    return pixel_cls_loss,pixel_pos_link_loss,pixel_neg_link_loss
+    return total_loss, pixel_cls_loss, pixel_pos_link_loss, pixel_neg_link_loss
