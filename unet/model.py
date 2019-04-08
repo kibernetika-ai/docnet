@@ -49,8 +49,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
                                                                                     labels['pixel_link_weight'])
         original = features * tf.expand_dims(tf.cast(labels['pixel_cls_label'], tf.float32), -1)
         predicted = features * tf.expand_dims(pixel_pos_scores, -1)
-        link_original = features * tf.expand_dims(tf.cast(labels['pixel_link_label'][:, :, 0], tf.float32), -1)
-        link_predicted = features * tf.expand_dims(link_pos_scores[:, :, 0], -1)
+        link_original = features * tf.expand_dims(tf.cast(labels['pixel_link_label'][:, :, :, 0], tf.float32), -1)
+        link_predicted = features * tf.expand_dims(link_pos_scores[:, :, :, 0], -1)
         global_step = tf.train.get_or_create_global_step()
         if training:
             board_hook = MlBoardReporter({
