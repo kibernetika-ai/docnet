@@ -127,13 +127,9 @@ def decodeImageByJoin(cls, links, cls_threshold, link_threshold):
     return get_all((y, x), w, h, group_mask)
 
 
-def maskToBoxes(mask, image_size):
+def maskToBoxes(mask,image_size,min_area=300, min_height=10):
     bboxes = []
     min_val, max_val, _, _ = cv2.minMaxLoc(mask)
-    print(max_val)
-    print(mask.shape)
-    if max_val > 100:
-        return max_val
     resized_mask = cv2.resize(mask, image_size, interpolation=cv2.INTER_NEAREST)
     for i in range(int(max_val)):
         bbox_mask = resized_mask == (i + 1)
@@ -142,6 +138,10 @@ def maskToBoxes(mask, image_size):
         if len(contours) < 1:
             continue
         r = cv2.minAreaRect(contours[0])
+        if min(r.size.width, r.size.height) < min_height:
+            continue
+        if (r.size.area() < min_area):
+            continue
         bboxes.append(r)
     return bboxes
 
