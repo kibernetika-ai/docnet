@@ -73,7 +73,7 @@ def findRoot(point, group_mask):
     stop_loss = 1000
     while group_mask[root] != -1:
         root = group_mask[root]
-        update_parent = True;
+        update_parent = True
         stop_loss -= 1
         if stop_loss < 0:
             raise Exception('Stop loss')
@@ -136,9 +136,10 @@ def maskToBoxes(mask,image_size,min_area=300, min_height=10):
         if len(contours) < 1:
             continue
         r = cv2.minAreaRect(contours[0])
-        if min(r.size.width, r.size.height) < min_height:
+
+        if min(r[1][0], r[1][0]) < min_height:
             continue
-        if (r.size.area() < min_area):
+        if (r[1][0]*r[1][0] < min_area):
             continue
         bboxes.append(r)
     return bboxes

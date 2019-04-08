@@ -35,5 +35,6 @@ def find_contours(mask, method = None):
     return contours
 
 def draw_contours(img, contours, idx = -1, color = 1, border_width = 1):
+
     cv2.drawContours(img, contours, idx, color, border_width)
     return img
