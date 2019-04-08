@@ -161,6 +161,8 @@ def postprocess_boxes(outputs, ctx):
         maxp = np.max(box, axis=0)
         minp = np.min(box, axis=0)
         text_img = mask[minp[1]:maxp[1], minp[0]:maxp[0], :]
+        if text_img.shape[0] < 1 or text_img.shape[1]<1:
+            continue
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
