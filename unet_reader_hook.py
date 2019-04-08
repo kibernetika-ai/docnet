@@ -162,6 +162,7 @@ def postprocess_boxes(outputs, ctx):
         minp = np.min(box, axis=0)
         text_img = mask[minp[1]:maxp[1], minp[0]:maxp[0], :]
         if text_img.shape[0] < 1 or text_img.shape[1]<1:
+            logging.info('Skip box: {}'.format(box))
             continue
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
