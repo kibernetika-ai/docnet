@@ -104,9 +104,7 @@ def decodeImageByJoin(cls, links, cls_threshold, link_threshold):
     h = cls.shape[0]
     w = cls.shape[1]
     pixel_mask = cls > cls_threshold
-    print(pixel_mask.shape)
     link_mask = links > link_threshold
-    print(link_mask.shape)
     y, x = np.where(pixel_mask == True)
     group_mask = {}
     for i in range(len(x)):
