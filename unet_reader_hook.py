@@ -138,8 +138,10 @@ def maskToBoxes(mask, image_size, min_area=200, min_height=6):
         r = cv2.minAreaRect(contours[0])
 
         if min(r[1][0], r[1][1]) < min_height:
+            logging.info('Skip size box {} {}'.format(r,i+1))
             continue
         if r[1][0] * r[1][1] < min_area:
+            logging.info('Skip area box {}'.format(r, i+1))
             continue
         bboxes.append(r)
     return bboxes
