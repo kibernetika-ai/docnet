@@ -171,7 +171,7 @@ def rotate_bound(image, angle):
 def postprocess_boxes(outputs, ctx):
     cls = outputs['pixel_pos_scores'][0]
     links = outputs['link_pos_scores'][0]
-    #testmask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
+    testmask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
     mask = decodeImageByJoin(cls, links, 0.5, 0)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
     to_predict = []
@@ -192,7 +192,7 @@ def postprocess_boxes(outputs, ctx):
         if text_img.shape[0] < 1 or text_img.shape[1]<1:
             logging.info('Skip box: {}'.format(box))
             continue
-        text_img = rotate_bound(text_img,-1*bboxes[i][2])
+        #text_img = rotate_bound(text_img,-1*bboxes[i][2])
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
@@ -201,12 +201,12 @@ def postprocess_boxes(outputs, ctx):
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         to_predict.append(np.expand_dims(text_img, 0))
 
-    for i in bboxes:
-        box = cv2.boxPoints(i)
-        box = np.int0(box)
-        ctx.image = cv2.drawContours(ctx.image, [box], 0, (255, 0, 0), 2)
-    #ctx.image = ctx.image.astype(np.float32)*np.expand_dims(testmask,2)
-    #ctx.image = ctx.image.astype(np.uint8)
+    #for i in bboxes:
+    #    box = cv2.boxPoints(i)
+    #    box = np.int0(box)
+    #    ctx.image = cv2.drawContours(ctx.image, [box], 0, (255, 0, 0), 2)
+    ctx.image = ctx.image.astype(np.float32)*np.expand_dims(testmask,2)
+    ctx.image = ctx.image.astype(np.uint8)
     ctx.outscores = outscores
     ctx.outimages = outimages
     for i in to_predict:
