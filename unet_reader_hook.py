@@ -160,7 +160,11 @@ def postprocess_boxes(outputs, ctx):
         mask = ctx.image * mask
         maxp = np.max(box, axis=0)
         minp = np.min(box, axis=0)
-        text_img = mask[minp[1]:maxp[1], minp[0]:maxp[0], :]
+        y1 = max(0,minp[1])
+        y2 = min(ctx.image.shape[0],maxp[1])
+        x1 = max(0,minp[0])
+        x2 = min(ctx.image.shape[1],maxp[0])
+        text_img = mask[y1:y2, x1:x2, :]
         if text_img.shape[0] < 1 or text_img.shape[1]<1:
             logging.info('Skip box: {}'.format(box))
             continue
