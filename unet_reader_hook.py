@@ -197,7 +197,7 @@ def postprocess_boxes(outputs, ctx):
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
         outimages.append(encoded)
-        outscores.append(1.0)
+        outscores.append(-1*bboxes[i][2])
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         to_predict.append(np.expand_dims(text_img, 0))
 
