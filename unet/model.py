@@ -17,7 +17,7 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     training = (mode == tf.estimator.ModeKeys.TRAIN)
 
     outs = unet(features, [2, 16], params['num_chans'], params['drop_prob'],
-                                               params['num_pools'], training=training,up_type=params['up_type'])
+                params['num_pools'], training=training, up_type=params['up_type'])
 
     pixel_cls_logits = outs[0]
     pixel_link_logits = outs[1]
@@ -49,6 +49,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
                                                                                     labels['pixel_link_weight'])
         original = features * tf.expand_dims(tf.cast(labels['pixel_cls_label'], tf.float32), -1)
         predicted = features * tf.expand_dims(pixel_pos_scores, -1)
+        link_original = features * tf.expand_dims(tf.cast(labels['pixel_link_label'][:, :, 0], tf.float32), -1)
+        link_predicted = features * tf.expand_dims(link_pos_scores[:, :, 0], -1)
         global_step = tf.train.get_or_create_global_step()
         if training:
             board_hook = MlBoardReporter({
@@ -66,6 +68,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
         tf.summary.image('Src', features, 3)
         tf.summary.image('Reconstruction', predicted, 3)
         tf.summary.image('Original', original, 3)
+        tf.summary.image('LinkOriginal1', link_original, 3)
+        tf.summary.image('LinkPredicted1', link_predicted, 3)
         hooks = []
         if not training:
             metrics['pixel_cls_loss'] = tf.metrics.mean(pixel_cls_loss)
