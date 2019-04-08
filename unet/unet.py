@@ -42,14 +42,14 @@ def unpool(pool, ind, ksize=[1, 2, 2, 1], name=None):
 
 def upnet(name,output,num_pool_layers,down_sample_layers,ch,drop_prob,training):
     for i in range(num_pool_layers):
-        down = down_sample_layers.pop()
+        down = down_sample_layers[len(down_sample_layers)-i-1]
         _,w,h,f = down.shape
         output = tf.layers.conv2d_transpose(output,filters=f,kernel_size=[3, 3],strides=[2, 2],padding='SAME',
                                             activation=None,
                                             kernel_initializer=tf.contrib.layers.variance_scaling_initializer(),
                                             name='unpool{}_{}'.format(name,i + 1))
         output = tf.concat([output, down], 3)
-        logging.info('Up_{}_{} - {}'.format(name,i+1,output.shape))
+        logging.info('Up{}_{} - {}'.format(name,i+1,output.shape))
         if i < (num_pool_layers-1):
             ch //= 2
         output = conv_block(output, ch, drop_prob, 'up{}_{}'.format(name,i + 1), False, training)
