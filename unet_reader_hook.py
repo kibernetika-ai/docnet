@@ -144,12 +144,35 @@ def maskToBoxes(mask, image_size, min_area=300, min_height=10):
         bboxes.append(r)
     return bboxes
 
+def rotate_bound(image, angle):
+    # grab the dimensions of the image and then determine the
+    # center
+    (h, w) = image.shape[:2]
+    (cX, cY) = (w // 2, h // 2)
+
+    # grab the rotation matrix (applying the negative of the
+    # angle to rotate clockwise), then grab the sine and cosine
+    # (i.e., the rotation components of the matrix)
+    M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    # compute the new bounding dimensions of the image
+    nW = int((h * sin) + (w * cos))
+    nH = int((h * cos) + (w * sin))
+
+    # adjust the rotation matrix to take into account translation
+    M[0, 2] += (nW / 2) - cX
+    M[1, 2] += (nH / 2) - cY
+
+    # perform the actual rotation and return the image
+    return cv2.warpAffine(image, M, (nW, nH))
 
 def postprocess_boxes(outputs, ctx):
     cls = outputs['pixel_pos_scores'][0]
     links = outputs['link_pos_scores'][0]
     #testmask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
-    mask = decodeImageByJoin(cls, links, 0.4, 0.1)
+    mask = decodeImageByJoin(cls, links, 0.4, 0.01)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
     to_predict = []
     outimages = []
@@ -169,6 +192,7 @@ def postprocess_boxes(outputs, ctx):
         if text_img.shape[0] < 1 or text_img.shape[1]<1:
             logging.info('Skip box: {}'.format(box))
             continue
+        text_img = rotate_bound(text_img,-1*bboxes[i][2])
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
