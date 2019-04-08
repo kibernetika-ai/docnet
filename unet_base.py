@@ -106,6 +106,7 @@ def main(args):
         'data_set': args.data_set,
         'limit': args.limit,
         'optimizer': args.optimizer,
+        'up_type': args.up_type,
     }
     if args.export:
         export(args.checkpoint_dir, params)
