@@ -61,6 +61,7 @@ out_types = {
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
+    ctx.resolution = int(inputs.get('resolution', 320))
     ctx.link_threshold = float(inputs.get('link_threshold', 0))
     logging.info('Output type: {}'.format(inputs.get('out_type', ['Box'])[0].decode("utf-8")))
     ctx.out_type = out_types.get(inputs.get('out_type', ['Box'])[0].decode("utf-8"), 0)
@@ -77,7 +78,7 @@ def preprocess_boxes(inputs, ctx):
             h = 1280
     image = cv2.resize(image[:, :, ::-1], (w, h))
     ctx.image = image
-    image = cv2.resize(image, (320, 320))
+    image = cv2.resize(image, (ctx.resolution, ctx.resolution))
     image = image.astype(np.float32) / 255.0
     image = np.expand_dims(image, 0)
     return {
