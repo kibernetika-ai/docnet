@@ -155,8 +155,8 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
 def maskToBoxes(mask, image_size):
     bboxes = []
     min_val, max_val, _, _ = cv2.minMaxLoc(mask)
-    print(max_val)
-    print(mask.shape)
+    logging.info(max_val)
+    logging.info(mask.shape)
     if max_val > 100:
         return max_val
     resized_mask = cv2.resize(mask, image_size, interpolation=cv2.INTER_NEAREST)
@@ -226,9 +226,7 @@ def decode_image_by_join(pixel_scores, link_scores,
         neighbours = util.get_neighbours(x, y)
         for n_idx, (nx, ny) in enumerate(neighbours):
             if util.is_valid_cord(nx, ny, w, h):
-                #                 reversed_neighbours = get_neighbours(nx, ny)
-                #                 reversed_idx = reversed_neighbours.index((x, y))
-                link_value = link_mask[y, x, n_idx]# and link_mask[ny, nx, reversed_idx]
+                link_value = link_mask[y, x, n_idx]
                 pixel_cls = pixel_mask[ny, nx]
                 if link_value and pixel_cls:
                     join(point, (ny, nx))
