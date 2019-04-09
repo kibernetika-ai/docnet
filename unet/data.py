@@ -160,7 +160,7 @@ def data_fn(params, training):
     resolution = params['resolution']
 
     def _input_fn():
-        ds = tf.data.TFRecordDataset(datasets_files, buffer_size=256 * 1024 * 1024)
+        ds = tf.data.TFRecordDataset(datasets_files, buffer_size=128 * 1024 * 1024)
 
         def _parser(example):
             features = {
