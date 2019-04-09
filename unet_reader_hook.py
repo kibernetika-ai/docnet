@@ -155,14 +155,25 @@ def maskToBoxes(mask, image_size, min_area=200, min_height=6):
         if len(contours) < 1:
             continue
         r = cv2.minAreaRect(contours[0])
-
-        #if min(r[1][0], r[1][1]) < min_height:
+        maxarea = 0
+        maxc = None
+        for j in contours:
+            area = cv2.contourArea(j)
+            if area > maxarea:
+                maxarea = area
+                maxc = j
+        if maxc is not None and maxarea > 36:
+            r = cv2.minAreaRect(maxc)
+            if min(r[1][0], r[1][1]) < min_height:
+                continue
+            bboxes.append(r)
+        # if min(r[1][0], r[1][1]) < min_height:
         #    logging.info('Skip size box {} {}'.format(r, i + 1))
         #    continue
-        #if r[1][0] * r[1][1] < min_area:
+        # if r[1][0] * r[1][1] < min_area:
         #    logging.info('Skip area box {} {}'.format(r, i + 1))
         #    continue
-        bboxes.append(r)
+        # bboxes.append(r)
     return bboxes
 
 
@@ -197,11 +208,11 @@ def postprocess_boxes(outputs, ctx):
     out_mask = None
     if ctx.out_type == 1:
         out_mask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
-        out_mask[out_mask<ctx.pixel_threshold] = 0
+        out_mask[out_mask < ctx.pixel_threshold] = 0
     elif ctx.out_type > 1:
         out_mask = cv2.resize(links[:, :, ctx.out_type - 2], (ctx.image.shape[1], ctx.image.shape[0]),
                               interpolation=cv2.INTER_NEAREST)
-        out_mask[out_mask<ctx.link_threshold] = 0
+        out_mask[out_mask < ctx.link_threshold] = 0
 
     mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
     bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
