@@ -122,8 +122,8 @@ def get_all(points, w, h, group_mask):
 def decodeImageByJoin(cls, links, cls_threshold, link_threshold):
     h = cls.shape[0]
     w = cls.shape[1]
-    pixel_mask = cls > cls_threshold
-    link_mask = links > link_threshold
+    pixel_mask = cls >= cls_threshold
+    link_mask = links >= link_threshold
     y, x = np.where(pixel_mask == True)
     group_mask = {}
     for i in range(len(x)):
