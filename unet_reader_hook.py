@@ -82,7 +82,7 @@ def preprocess_boxes(inputs, ctx):
     h = fix_length(h,32)
     image = cv2.resize(image[:, :, ::-1], (w, h))
     ctx.image = image
-    image = cv2.resize(image, (ctx.resolution, ctx.resolution))
+    #image = cv2.resize(image, (ctx.resolution, ctx.resolution))
     image = image.astype(np.float32) / 255.0
     image = np.expand_dims(image, 0)
     return {
