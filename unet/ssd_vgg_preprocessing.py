@@ -252,8 +252,7 @@ def preprocess_for_train(image, labels, bboxes, xs, ys,
 
 
         # Convert to float scaled [0, 1].
-        if image.dtype != tf.float32:
-            image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
         #         tf_summary_image(image, bboxes, 'image_with_bboxes')
 
         # Distort image and bounding boxes.
