@@ -14,7 +14,7 @@
 import numpy as np
 import tensorflow as tf
 import cv2
-import util
+from tf_extended import util
 from tf_extended import math as tfe_math
 def bboxes_resize(bbox_ref, bboxes, xs, ys, name=None):
     """Resize bounding boxes based on a reference bounding box,
@@ -91,7 +91,7 @@ def bboxes_filter_by_shorter_side(labels, bboxes, xs, ys, min_height = 16, max_h
     Filtering bboxes by the length of shorter side
     """
     with tf.name_scope('bboxes_filter_by_shorter_side', [labels, bboxes]):
-        bbox_rects = util.tf.min_area_rect(xs, ys)
+        bbox_rects = util.min_area_rect(xs, ys)
         ws, hs = bbox_rects[:, 2], bbox_rects[:, 3]
         shorter_sides = tf.minimum(ws, hs)
         if assign_value is not None:
@@ -230,26 +230,26 @@ def bboxes_jaccard(bbox, gxs, gys):
 def np_bboxes_jaccard(bbox, gxs, gys):
     #     assert np.shape(bbox) == (8,)
     bbox_points = np.reshape(bbox, (4, 2))
-    cnts = util.img.points_to_contours(bbox_points)
+    cnts = util.points_to_contours(bbox_points)
 
     # contruct a 0-1 mask to draw contours on
     xmax = np.max(bbox_points[:, 0])
     xmax = max(xmax, np.max(gxs)) + 10
     ymax = np.max(bbox_points[:, 1])
     ymax = max(ymax, np.max(gys)) + 10
-    mask = util.img.black((ymax, xmax))
+    mask = util.black((ymax, xmax))
 
     # draw bbox on the mask
     bbox_mask = mask.copy()
-    util.img.draw_contours(bbox_mask, cnts, idx = -1, color = 1, border_width = -1)
+    util.draw_contours(bbox_mask, cnts, idx = -1, color = 1, border_width = -1)
     jaccard = np.zeros((len(gxs),), dtype = np.float32)
     # draw ground truth
     for gt_idx, gt_bbox in enumerate(zip(gxs, gys)):
         gt_mask = mask.copy()
         gt_bbox = np.transpose(gt_bbox)
         #         assert gt_bbox.shape == (4, 2)
-        gt_cnts = util.img.points_to_contours(gt_bbox)
-        util.img.draw_contours(gt_mask, gt_cnts, idx = -1, color = 1, border_width = -1)
+        gt_cnts = util.points_to_contours(gt_bbox)
+        util.draw_contours(gt_mask, gt_cnts, idx = -1, color = 1, border_width = -1)
 
         intersect = np.sum(bbox_mask * gt_mask)
         union = np.sum(bbox_mask + gt_mask >= 1)
