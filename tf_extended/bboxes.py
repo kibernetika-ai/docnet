@@ -14,7 +14,7 @@
 import numpy as np
 import tensorflow as tf
 import cv2
-from tf_extended import util
+import tf_extended.util as util
 from tf_extended import math as tfe_math
 def bboxes_resize(bbox_ref, bboxes, xs, ys, name=None):
     """Resize bounding boxes based on a reference bounding box,
