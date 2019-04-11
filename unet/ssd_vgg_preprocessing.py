@@ -166,7 +166,7 @@ def distorted_bounding_box_crop(image,
             xmax = xmin + w
             ymax = ymin + h
             rnd_bboxes = tf.concat([ymin, xmin, ymax, xmax], axis = 1)
-            rnd_labels = tf.constant([0], dtype = tf.int64)
+            rnd_labels = tf.constant([0], dtype = tf.int32)
             rnd_xs = tf.concat([xmin, xmax, xmax, xmin], axis = 1)
             rnd_ys = tf.concat([ymin, ymin, ymax, ymax], axis = 1)
 
