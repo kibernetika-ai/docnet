@@ -1,9 +1,9 @@
 import cv2
-import time
 import numpy as np
 import logging
 import json
 import base64
+import math
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -57,6 +57,8 @@ out_types = {
     'Link8': 9,
 }
 
+def fix_length(l,b):
+    return int(math.ceil(l/b)*b)
 
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
@@ -76,6 +78,8 @@ def preprocess_boxes(inputs, ctx):
         if h > 1280:
             w = int(w * 1280.0 / float(h))
             h = 1280
+    w = fix_length(w,32)
+    h = fix_length(h,32)
     image = cv2.resize(image[:, :, ::-1], (w, h))
     ctx.image = image
     image = cv2.resize(image, (ctx.resolution, ctx.resolution))
