@@ -168,6 +168,14 @@ def data_fn(params, training):
                     tf.FixedLenFeature((), tf.string, default_value=''),
                 'image/shape':
                     tf.FixedLenFeature(3, tf.int64),
+                'image/object/bbox/xmin':
+                    tf.VarLenFeature(tf.float32),
+                'image/object/bbox/xmax':
+                    tf.VarLenFeature(tf.float32),
+                'image/object/bbox/ymin':
+                    tf.VarLenFeature(tf.float32),
+                'image/object/bbox/ymax':
+                    tf.VarLenFeature(tf.float32),
                 'image/object/bbox/x1':
                     tf.VarLenFeature(tf.float32),
                 'image/object/bbox/x2':
