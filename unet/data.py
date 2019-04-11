@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import unet.util as util
 import glob
-
+from unet import ssd_vgg_preprocessing
 
 def tf_cal_gt_for_single_image(xs, ys, labels, resolution):
     pixel_cls_label, pixel_cls_weight, \
@@ -191,9 +191,20 @@ def data_fn(params, training):
             img = tf.image.decode_jpeg(res['image/encoded'], channels=3)
             original_w = tf.cast(res['image/shape'][1], tf.int32)
             original_h = tf.cast(res['image/shape'][0], tf.int32)
-            img = tf.reshape(img, [1, original_h, original_w, 3])
-            img = tf.image.resize_images(img, [resolution, resolution])[0]
-            img = tf.cast(img,tf.float32)/255.0
+            img = tf.reshape(img, [original_h, original_w, 3])
+            #img = tf.reshape(img, [1, original_h, original_w, 3])
+            #img = tf.image.resize_images(img, [resolution, resolution])[0]
+            #img = tf.cast(img,tf.float32)/255.0
+            ymin = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/ymin']), tf.float32)
+            xmin = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/xmin']), tf.float32)
+            xmax = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/xmax']), tf.float32)
+            ymax = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/ymax']), tf.float32)
+            ymin = tf.expand_dims(ymin, 0)
+            xmin = tf.expand_dims(xmin, 0)
+            ymax = tf.expand_dims(ymax, 0)
+            xmax = tf.expand_dims(xmax, 0)
+            bboxes = tf.concat([ymin,xmin,ymax,xmax],0)
+            bboxes = tf.transpose(bboxes)
             x1 = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/x1']), tf.float32)
             x2 = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/x2']), tf.float32)
             x3 = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/x3']), tf.float32)
@@ -205,6 +216,14 @@ def data_fn(params, training):
             gxs = tf.transpose(tf.stack([x1, x2, x3, x4]))
             gys = tf.transpose(tf.stack([y1, y2, y3, y4]))
             labels = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/label']), tf.int32)
+            image, labels, bboxes, gxs, gys = ssd_vgg_preprocessing.preprocess_image(img,
+                                                   labels = labels,
+                                                   bboxes = bboxes,
+                                                   xs = gxs, ys = gys,
+                                                   out_shape = [resolution,resolution],
+                                                   data_format = 'NHWC',
+                                                   is_training=training)
+            img = tf.reshape(img, [resolution, resolution, 3])
             pixel_cls_label, pixel_cls_weight, \
             pixel_link_label, pixel_link_weight = \
                 tf_cal_gt_for_single_image(gxs, gys, labels, resolution)
