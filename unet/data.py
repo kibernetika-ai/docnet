@@ -224,7 +224,7 @@ def data_fn(params, training):
             gxs = tf.transpose(tf.stack([x1, x2, x3, x4]))
             gys = tf.transpose(tf.stack([y1, y2, y3, y4]))
             labels = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/label']), tf.int32)
-            image, labels, bboxes, gxs, gys = ssd_vgg_preprocessing.preprocess_image(img,
+            img, labels, bboxes, gxs, gys = ssd_vgg_preprocessing.preprocess_image(img,
                                                    labels = labels,
                                                    bboxes = bboxes,
                                                    xs = gxs, ys = gys,

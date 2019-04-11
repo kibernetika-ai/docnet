@@ -252,11 +252,10 @@ def preprocess_for_train(image, labels, bboxes, xs, ys,
 
 
         # Convert to float scaled [0, 1].
-        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+        image = tf.cast(image, dtype=tf.float32)/255.0
         #         tf_summary_image(image, bboxes, 'image_with_bboxes')
 
         # Distort image and bounding boxes.
-        dst_image = image
         dst_image, labels, bboxes, xs, ys, distort_bbox = \
             distorted_bounding_box_crop(image, labels, bboxes, xs, ys,
                                         min_object_covered = MIN_OBJECT_COVERED,
