@@ -58,6 +58,7 @@ out_types = {
 def fix_length(l,b):
     return int(math.ceil(l/b)*b)
 
+MAX_DIM = 2048
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
@@ -68,14 +69,14 @@ def preprocess_boxes(inputs, ctx):
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
     w = image.shape[1]
     h = image.shape[0]
-    #if w > h:
-    #    if w > 1280:
-    #        h = int(float(h) * 1280.0 / float(w))
-    #        w = 1280
-    #else:
-    #    if h > 1280:
-    #        w = int(w * 1280.0 / float(h))
-    #        h = 1280
+    if w > h:
+        if w > MAX_DIM:
+            h = int(float(h) * MAX_DIM / float(w))
+            w = MAX_DIM
+    else:
+        if h > MAX_DIM:
+            w = int(w * MAX_DIM / float(h))
+            h = MAX_DIM
     w = fix_length(w,32)
     h = fix_length(h,32)
     image = cv2.resize(image[:, :, ::-1], (w, h))
