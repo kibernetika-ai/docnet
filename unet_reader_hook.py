@@ -222,17 +222,17 @@ def postprocess_boxes(outputs, ctx):
     outimages = []
     outscores = []
     for i in range(len(bboxes)):
-        cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
+        #cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
         box = np.int0(cv2.boxPoints(bboxes[i]))
-        mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
-        mask = ctx.image * mask
+        #mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
+        #mask = ctx.image * mask
         maxp = np.max(box, axis=0) + 2
         minp = np.min(box, axis=0) - 2
         y1 = max(0, minp[1])
         y2 = min(ctx.image.shape[0], maxp[1])
         x1 = max(0, minp[0])
         x2 = min(ctx.image.shape[1], maxp[0])
-        text_img = mask[y1:y2, x1:x2, :]
+        text_img = ctx.image[y1:y2, x1:x2, :]
         if text_img.shape[0] < 1 or text_img.shape[1] < 1:
             logging.info('Skip box: {}'.format(box))
             continue
