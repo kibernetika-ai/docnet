@@ -13,12 +13,10 @@ ENGLISH_CHAR_MAP = [
     # Alphabet normal
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    '-', ':', '(', ')', '.', ',', '/'
-    # Apostrophe only for specific cases (eg. : O'clock)
-                                  "'",
+    '0','1','2','3','4','5','6','7','8','9',
+    '-',':','(',')','.',',','/','$',
+    "'",
     " ",
-    # "end of sentence" character for CTC algorithm
     '_'
 ]
 
@@ -278,6 +276,7 @@ def final_postprocess(outputs_it, ctx):
                 continue
             line.append(t)
         line = ''.join(line)
+        logging.info('Found text: {}'.format(line))
         table.append(
             {
                 'type': 'text',
