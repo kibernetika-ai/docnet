@@ -58,7 +58,7 @@ out_types = {
 def fix_length(l,b):
     return int(math.ceil(l/b)*b)
 
-MAX_DIM = 2048
+MAX_DIM = 1024
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
