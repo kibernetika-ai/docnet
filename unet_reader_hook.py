@@ -226,8 +226,8 @@ def postprocess_boxes(outputs, ctx):
         box = np.int0(cv2.boxPoints(bboxes[i]))
         mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
         mask = ctx.image * mask
-        maxp = np.max(box, axis=0)
-        minp = np.min(box, axis=0)
+        maxp = np.max(box, axis=0) + 2
+        minp = np.min(box, axis=0) - 2
         y1 = max(0, minp[1])
         y2 = min(ctx.image.shape[0], maxp[1])
         x1 = max(0, minp[0])
@@ -270,7 +270,7 @@ def final_postprocess(outputs_it, ctx):
         end_line = len(chrset_index) - 1
         for i in predictions[0]:
             if i == end_line:
-                break;
+                break
             t = chrset_index.get(i, -1)
             if t == -1:
                 continue
