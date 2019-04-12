@@ -70,14 +70,14 @@ def preprocess_boxes(inputs, ctx):
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
     w = image.shape[1]
     h = image.shape[0]
-    if w > h:
-        if w > 1280:
-            h = int(float(h) * 1280.0 / float(w))
-            w = 1280
-    else:
-        if h > 1280:
-            w = int(w * 1280.0 / float(h))
-            h = 1280
+    #if w > h:
+    #    if w > 1280:
+    #        h = int(float(h) * 1280.0 / float(w))
+    #        w = 1280
+    #else:
+    #    if h > 1280:
+    #        w = int(w * 1280.0 / float(h))
+    #        h = 1280
     w = fix_length(w,32)
     h = fix_length(h,32)
     image = cv2.resize(image[:, :, ::-1], (w, h))
@@ -275,7 +275,7 @@ def final_postprocess(outputs_it, ctx):
                 break;
             t = chrset_index.get(i, -1)
             if t == -1:
-                continue;
+                continue
             line.append(t)
         line = ''.join(line)
         table.append(
