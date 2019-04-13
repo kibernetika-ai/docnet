@@ -236,7 +236,7 @@ def data_fn(params, training):
 
             def original():
                 rimg = tf.reshape(img, [1, original_h, original_w, 3])
-                rimg = tf.image.resize_images(img, [resolution, resolution])[0]
+                rimg = tf.image.resize_images(rimg, [resolution, resolution])[0]
                 return tf.cast(rimg,tf.float32)/255.0, labels, bboxes, gxs, gys
 
             img, labels, bboxes, gxs, gys = tf.cond(tf.less(rnd, 0.5), ssd, original)
