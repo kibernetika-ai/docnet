@@ -260,7 +260,7 @@ def postprocess_boxes(outputs, ctx):
         for i in bboxes:
             box = cv2.boxPoints(i)
             box = np.int0(box)
-            ctx.image = cv2.drawContours(ctx.image, [box], 0, (255, 0, 0), 2)
+            cv2.drawContours(ctx.image, [box], 0, (255, 0, 0), 2)
     ctx.outscores = outscores
     ctx.outimages = outimages
     for i in to_predict:
