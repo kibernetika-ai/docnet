@@ -82,9 +82,9 @@ def preprocess_boxes(inputs, ctx):
             h = MAX_DIM
     w = fix_length(w,32)
     h = fix_length(h,32)
-    ctx.original_image = image[:, :, ::-1]
-    image = cv2.resize(ctx.original_image, (w, h))
-    ctx.image = image
+    ctx.image = image[:, :, ::-1]
+    image = cv2.resize(ctx.image, (w, h))
+    #ctx.image = image
     #image = cv2.resize(image, (ctx.resolution, ctx.resolution))
     image = image.astype(np.float32) / 255.0
     image = np.expand_dims(image, 0)
@@ -229,18 +229,18 @@ def postprocess_boxes(outputs, ctx):
     for i in range(len(bboxes)):
         #cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
         box = np.int0(cv2.boxPoints(bboxes[i]))
-        box = box.astype(np.float32)
+
         #mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
         #mask = ctx.image * mask
-        maxp = np.max(box, axis=0)*ctx.ratio + 2
-        minp = np.min(box, axis=0)*ctx.ratio - 2
-        maxp = maxp.astype(np.int32)
-        minp = minp.astype(np.int32)
+        maxp = np.max(box, axis=0) + 2
+        minp = np.min(box, axis=0) - 2
+        #maxp = maxp.astype(np.int32)
+        #minp = minp.astype(np.int32)
         y1 = max(0, minp[1])
-        y2 = min(ctx.original_image.shape[0], maxp[1])
+        y2 = min(ctx.image.shape[0], maxp[1])
         x1 = max(0, minp[0])
-        x2 = min(ctx.original_image.shape[1], maxp[0])
-        text_img = ctx.original_image[y1:y2, x1:x2, :]
+        x2 = min(ctx.image.shape[1], maxp[0])
+        text_img = ctx.image[y1:y2, x1:x2, :]
         if text_img.shape[0] < 1 or text_img.shape[1] < 1:
             logging.info('Skip box: {}'.format(box))
             continue
