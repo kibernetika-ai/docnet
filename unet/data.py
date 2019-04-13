@@ -224,13 +224,20 @@ def data_fn(params, training):
             gxs = tf.transpose(tf.stack([x1, x2, x3, x4]))
             gys = tf.transpose(tf.stack([y1, y2, y3, y4]))
             labels = tf.cast(tf.sparse_tensor_to_dense(res['image/object/bbox/label']), tf.int32)
-            img, labels, bboxes, gxs, gys = ssd_vgg_preprocessing.preprocess_image(img,
-                                                   labels = labels,
-                                                   bboxes = bboxes,
-                                                   xs = gxs, ys = gys,
-                                                   out_shape = [resolution,resolution],
-                                                   data_format = 'NHWC',
-                                                   is_training=training)
+            rnd = tf.random_uniform((), minval = 0, maxval = 1)
+            def ssd():
+                return ssd_vgg_preprocessing.preprocess_image(img,
+                                                              labels = labels,
+                                                              bboxes = bboxes,
+                                                              xs = gxs, ys = gys,
+                                                              out_shape = [resolution,resolution],
+                                                              data_format = 'NHWC',
+                                                              is_training=training)
+
+            def original():
+                return tf.cast(img,tf.float32)/255.0, labels, bboxes, gxs, gys
+
+            img, labels, bboxes, gxs, gys = tf.cond(tf.less(rnd, 0.5), ssd, original)
             img = tf.reshape(img, [resolution, resolution, 3])
             pixel_cls_label, pixel_cls_weight, \
             pixel_link_label, pixel_link_weight = \
