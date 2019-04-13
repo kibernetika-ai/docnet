@@ -275,7 +275,7 @@ def final_postprocess(outputs_it, ctx):
     for outputs in outputs_it:
         predictions = outputs['output']
         line = []
-        end_line = len(chrset_index)
+        end_line = len(chrset_index)-1
         for i in predictions[0]:
             if i == end_line:
                 break
