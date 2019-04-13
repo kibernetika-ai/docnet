@@ -82,7 +82,7 @@ def preprocess_boxes(inputs, ctx):
             h = MAX_DIM
     w = fix_length(w,32)
     h = fix_length(h,32)
-    ctx.image = image[:, :, ::-1]
+    ctx.image = image[:, :, ::-1].copy()
     image = cv2.resize(ctx.image, (w, h))
     #ctx.image = image
     #image = cv2.resize(image, (ctx.resolution, ctx.resolution))
