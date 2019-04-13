@@ -235,7 +235,9 @@ def data_fn(params, training):
                                                               is_training=training)
 
             def original():
-                return tf.cast(img,tf.float32)/255.0, labels, bboxes, gxs, gys
+                rimg = tf.reshape(img, [1, original_h, original_w, 3])
+                rimg = tf.image.resize_images(img, [resolution, resolution])[0]
+                return tf.cast(rimg,tf.float32)/255.0, labels, bboxes, gxs, gys
 
             img, labels, bboxes, gxs, gys = tf.cond(tf.less(rnd, 0.5), ssd, original)
             img = tf.reshape(img, [resolution, resolution, 3])
