@@ -58,7 +58,7 @@ out_types = {
 def fix_length(l,b):
     return int(math.ceil(l/b)*b)
 
-MAX_DIM = 1280.0
+MAX_DIM = 1024.0
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
@@ -80,8 +80,8 @@ def preprocess_boxes(inputs, ctx):
             ctx.ratio = MAX_DIM / float(h)
             w = int(float(w) * ctx.ratio)
             h = MAX_DIM
-    w = fix_length(w,32)
-    h = fix_length(h,32)
+    w = fix_length(w,64)
+    h = fix_length(h,64)
     ctx.image = image[:, :, ::-1].copy()
     image = cv2.resize(ctx.image, (w, h))
     #ctx.image = image
