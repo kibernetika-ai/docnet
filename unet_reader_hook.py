@@ -80,8 +80,8 @@ def preprocess_boxes(inputs, ctx):
             ctx.ratio = MAX_DIM / float(h)
             w = int(float(w) * ctx.ratio)
             h = MAX_DIM
-    w = fix_length(w,64)
-    h = fix_length(h,64)
+    w = fix_length(w,32)
+    h = fix_length(h,32)
     ctx.image = image[:, :, ::-1].copy()
     image = cv2.resize(ctx.image, (w, h))
     #ctx.image = image
