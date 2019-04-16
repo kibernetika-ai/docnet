@@ -163,7 +163,7 @@ class SynthTextDataFetcher():
 
 
 
-def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
+def convert(image_idxes,fetcher,out_path , records_per_file = 5000):
     record_count = 0
     tfrecord_writer = None
     for image_idx in image_idxes:
@@ -197,7 +197,7 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 50000):
     if tfrecord_writer is not None:
         tfrecord_writer.close()
 
-def cvt_to_tfrecords(train_path,test_path ,test,data_path, gt_path, records_per_file = 50000):
+def cvt_to_tfrecords(train_path,test_path ,test,data_path, gt_path, records_per_file = 5000):
 
     fetcher = SynthTextDataFetcher(root_path = data_path, mat_path = gt_path)
     image_indexes = [i for i in range(fetcher.num_images)]
