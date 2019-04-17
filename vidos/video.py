@@ -62,6 +62,7 @@ def get_parser():
     )
     parser.add_argument(
         '--camera',
+        type=str,
         help='Full URL to network camera.',
     )
     parser.add_argument('--model')
@@ -108,7 +109,8 @@ def choose_one(names,candidates):
 
 to_process = None
 result = None
-
+last_processed = None
+runned = True
 def process():
     size = 1024
     charset, _ = read_charset()
@@ -127,7 +129,7 @@ def process():
     serving2.load_model('./m2')
     global to_process
     i_name = 1
-    while True:
+    while runned:
         lock.acquire(blocking=True)
         frame = to_process
         if frame is None:
@@ -206,11 +208,28 @@ def process():
         if found_name is not None:
             add_overlays(frame,found_name[0],found_name[1])
             cv2.imwrite('results/result_{}.jpg'.format(i_name),frame)
+            global result
+            result = frame
             i_name+=1
-        global result
-        result = frame
+        global last_processed
+        last_processed = frame
         lock.release()
         print('stop frame')
+
+def make_small(frame,size):
+    w = frame.shape[1]
+    h = frame.shape[0]
+    if w > h:
+        if w > size:
+            ratio = size / float(w)
+            h = int(float(h) * ratio)
+            w = size
+        else:
+            if h > size:
+                ratio = size / float(h)
+                w = int(float(w) * ratio)
+                h = size
+    return cv2.resize(frame[:, :, :].copy(), (w, h))
 
 def main():
 
@@ -224,23 +243,31 @@ def main():
         video_capture = cv2.VideoCapture(0)
     p = threading.Thread(target=process)
     p.start()
+    local_result = None
+    last_result = None
+    show_size = 512
     try:
         doit = True
+
         while doit:
             _, frame = video_capture.read()
-            cv2.imshow('Video', frame)
+            f1 = make_small(frame,show_size)
+            if local_result is None:
+                local_result = make_small(frame,show_size//2)
+            if last_result is None:
+                last_result = make_small(frame,show_size//2)
+            f2 = np.concatenate([last_result,local_result],axis=1)
+            f1 = np.concatenate([f1,f2],axis=0)
+            cv2.imshow('Video', f1)
             if lock.acquire(blocking=False):
                 global to_process
                 to_process=frame
-                #if result is not None:
-                #    frame = result
-                #    cv2.imshow('Video', frame)
+                if result is not None:
+                    local_result = make_small(result,show_size//2)
+                if last_processed is not None:
+                    last_result = make_small(last_processed,show_size//2)
+                    #cv2.imshow('Video', frame)
                 lock.release()
-            key = cv2.waitKey(1)
-            # Wait 'q' or Esc
-            if key == ord('q') or key == 27:
-                break
-        while True:
             key = cv2.waitKey(1)
             # Wait 'q' or Esc
             if key == ord('q') or key == 27:
@@ -248,7 +275,8 @@ def main():
 
     except (KeyboardInterrupt, SystemExit) as e:
         print('Caught %s: %s' % (e.__class__.__name__, e))
-
+    global runned
+    runned = False
     # When everything is done, release the capture
     video_capture.release()
     cv2.destroyAllWindows()
