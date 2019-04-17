@@ -85,7 +85,7 @@ def find_people(image,draw_image,ctx):
             xmax = min(xmax+bw,w)
             ymax = min(ymax+bh*4,h)
             images.append((ymin,ymax,image[ymin:ymax,xmin:xmax,:]))
-            cv2.rectangle(draw_image,(xmin,ymin),(xmax,ymax),(0,255,0), thickness=2)
+            draw_image = cv2.rectangle(draw_image,(xmin,ymin),(xmax,ymax),(0,255,0), thickness=2)
     return images,draw_image
 
 def process(inputs, ctx):
@@ -94,7 +94,7 @@ def process(inputs, ctx):
     link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:,:,::-1]
     images,image = find_people(image.copy(),image,ctx)
-    r_, buf = cv2.imencode('.png',image[:, :, ::-1])
+    r_, buf = cv2.imencode('.png',np.ascontiguousarray(image[:, :, ::-1],np.uint8))
     image = np.array(buf).tostring()
     return {
         'output': image,
