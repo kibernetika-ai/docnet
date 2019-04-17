@@ -66,7 +66,7 @@ def find_people(image,draw_image,ctx):
     data = np.array(data).transpose([2, 0, 1]).reshape(1, 3, 300, 300)
     # convert to BGR
     data = data[:, ::-1, :, :]
-    data = ctx.drivers[0].predict(data)
+    data = ctx.drivers[0].predict({'data': data})
     data = list(data.values())[0].reshape([-1, 7])
     bboxes_raw = data[data[:, 2] > 0.25]
 
