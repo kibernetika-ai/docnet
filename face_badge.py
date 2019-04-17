@@ -92,9 +92,9 @@ def process(inputs, ctx):
     image = inputs['image'][0]
     pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
     link_threshold = float(inputs.get('link_threshold', 0.5))
-    image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:,:,::-1]
-    images,image = find_people(image.copy(),image,ctx)
-    r_, buf = cv2.imencode('.png',np.ascontiguousarray(image[:, :, ::-1],np.uint8))
+    image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
+    images,image = find_people(image[:,:,::-1],image,ctx)
+    r_, buf = cv2.imencode('.png',image)
     image = np.array(buf).tostring()
     return {
         'output': image,
