@@ -229,7 +229,7 @@ def make_small(frame,size):
                 ratio = size / float(h)
                 w = int(float(w) * ratio)
                 h = size
-    return cv2.resize(frame[:, :, :].copy(), (w, h))
+    return cv2.resize(frame, (w, h))
 
 def main():
 
@@ -251,11 +251,12 @@ def main():
 
         while doit:
             _, frame = video_capture.read()
-            f1 = make_small(frame,show_size)
+            sframe = frame.copy()
+            f1 = make_small(sframe,show_size)
             if local_result is None:
-                local_result = make_small(frame,show_size//2)
+                local_result = make_small(sframe,show_size//2)
             if last_result is None:
-                last_result = make_small(frame,show_size//2)
+                last_result = make_small(sframe,show_size//2)
             f2 = np.concatenate([last_result,local_result],axis=1)
             f1 = np.concatenate([f1,f2],axis=0)
             cv2.imshow('Video', f1)
