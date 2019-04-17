@@ -253,7 +253,7 @@ def postprocess_boxes(outputs, ctx):
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         to_predict.append(np.expand_dims(text_img.astype(np.float32) / 127.5 - 1, 0))
-        _, buf = cv2.imencode('.png', text_img[:, :, :])
+        _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
         outimages.append(encoded)
