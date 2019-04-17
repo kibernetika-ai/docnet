@@ -345,7 +345,7 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
     width = min(infer_width,width)
     im = cv2.cvtColor(im,cv2.COLOR_RGB2GRAY)
 
-    im[np.greater(im,100)]=255
+    im[np.greater(im,200)]=255
 
     im = cv2.cvtColor(im,cv2.COLOR_GRAY2RGB)
 
