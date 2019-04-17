@@ -258,12 +258,12 @@ def postprocess_boxes(outputs, ctx):
         if text_img.shape[0] < 1 or text_img.shape[1] < 1:
             logging.info('Skip box: {}'.format(box))
             continue
-        # if bboxes[i][1][0]>bboxes[i][1][1]:
-        #    angle = -1*bboxes[i][2]
-        # else:
-        #    angle = -1*(90+bboxes[i][2])
-        # if angle!=0:
-        #    text_img = rotate_bound(text_img,angle)
+        if bboxes[i][1][0]>bboxes[i][1][1]:
+            angle = -1*bboxes[i][2]
+        else:
+            angle = -1*(90+bboxes[i][2])
+        if angle!=0:
+          text_img = rotate_bound(text_img,angle)
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         to_predict.append(np.expand_dims(text_img.astype(np.float32) / 255.0, 0))
@@ -344,6 +344,7 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
     height = int(h / ratio)
     width = min(infer_width,width)
     im = cv2.resize(im, (width, height), interpolation=cv2.INTER_LINEAR)
+    cv2.col
     pw = max(0, infer_width - im.shape[1])
     ph = max(0, infer_height - im.shape[0])
     im = np.pad(im, ((0, ph), (0, pw), (0, 0)), 'constant', constant_values=0)
