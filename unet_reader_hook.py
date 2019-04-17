@@ -250,14 +250,15 @@ def postprocess_boxes(outputs, ctx):
             angle = -1*(90+bboxes[i][2])
         if angle!=0:
             text_img = rotate_bound(text_img,angle)
-        text_img
+
+        text_img = norm_image_for_text_prediction(text_img, 32, 320)
+        to_predict.append(np.expand_dims(text_img, 0))
         _, buf = cv2.imencode('.png', text_img[:, :, :])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
         outimages.append(encoded)
         outscores.append(-1 * bboxes[i][2])
-        text_img = norm_image_for_text_prediction(text_img, 32, 320)
-        to_predict.append(np.expand_dims(text_img, 0))
+
 
     if out_mask is not None:
         ctx.image = ctx.image.astype(np.float32) * np.expand_dims(out_mask, 2)
