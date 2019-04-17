@@ -250,7 +250,8 @@ def postprocess_boxes(outputs, ctx):
             angle = -1*(90+bboxes[i][2])
         if angle!=0:
             text_img = rotate_bound(text_img,angle)
-        _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
+        text_img
+        _, buf = cv2.imencode('.png', text_img[:, :, :])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
         outimages.append(encoded)
