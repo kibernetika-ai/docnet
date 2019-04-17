@@ -383,16 +383,18 @@ def maskToBoxes(mask, image_size, min_area=200, min_height=6):
         bbox_mask = resized_mask == (i + 1)
         bbox_mask = bbox_mask.astype(np.int32)
         contours = cv2.findContours(bbox_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        print(contours[1])
         contours = contours[1]
         if len(contours) < 1:
             continue
         maxarea = 0
         maxc = None
         for j in contours:
-            area = cv2.contourArea(j)
-            if area > maxarea:
-                maxarea = area
-                maxc = j
+            if len(j)>1:
+                area = cv2.contourArea(j)
+                if area > maxarea:
+                    maxarea = area
+                    maxc = j
         if maxc is not None and maxarea > 36:
             r = cv2.minAreaRect(maxc)
             if min(r[1][0], r[1][1]) < min_height:
