@@ -244,7 +244,12 @@ def postprocess_boxes(outputs, ctx):
         if text_img.shape[0] < 1 or text_img.shape[1] < 1:
             logging.info('Skip box: {}'.format(box))
             continue
-        # text_img = rotate_bound(text_img,-1*bboxes[i][2])
+        if bboxes[i][1][0]>bboxes[i][1][1]:
+            angle = -1*bboxes[i][2]
+        else:
+            angle = -1*(90+bboxes[i][2])
+        if angle!=0:
+            text_img = rotate_bound(text_img,angle)
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
