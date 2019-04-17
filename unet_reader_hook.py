@@ -13,8 +13,8 @@ ENGLISH_CHAR_MAP1 = [
     # Alphabet normal
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0','1','2','3','4','5','6','7','8','9',
-    '-',':','(',')','.',',','/','$',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    '-', ':', '(', ')', '.', ',', '/', '$',
     "'",
     " ",
     '_'
@@ -65,10 +65,14 @@ out_types = {
     'Link8': 9,
 }
 
-def fix_length(l,b):
-    return int(math.ceil(l/b)*b)
+
+def fix_length(l, b):
+    return int(math.ceil(l / b) * b)
+
 
 MAX_DIM = 1024.0
+
+
 def preprocess_boxes(inputs, ctx):
     image = inputs['image'][0]
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
@@ -90,12 +94,12 @@ def preprocess_boxes(inputs, ctx):
             ctx.ratio = MAX_DIM / float(h)
             w = int(float(w) * ctx.ratio)
             h = MAX_DIM
-    w = fix_length(w,32)
-    h = fix_length(h,32)
+    w = fix_length(w, 32)
+    h = fix_length(h, 32)
     ctx.image = image[:, :, ::-1].copy()
     image = cv2.resize(ctx.image, (w, h))
-    #ctx.image = image
-    #image = cv2.resize(image, (ctx.resolution, ctx.resolution))
+    # ctx.image = image
+    # image = cv2.resize(image, (ctx.resolution, ctx.resolution))
     image = image.astype(np.float32) / 255.0
     image = np.expand_dims(image, 0)
     return {
@@ -225,7 +229,7 @@ def postprocess_boxes(outputs, ctx):
     out_mask = None
     if ctx.out_type == 1:
         out_mask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
-        #out_mask[out_mask < ctx.pixel_threshold] = 0
+        # out_mask[out_mask < ctx.pixel_threshold] = 0
     elif ctx.out_type > 1:
         out_mask = cv2.resize(links[:, :, ctx.out_type - 2], (ctx.image.shape[1], ctx.image.shape[0]),
                               interpolation=cv2.INTER_NEAREST)
@@ -237,15 +241,15 @@ def postprocess_boxes(outputs, ctx):
     outimages = []
     outscores = []
     for i in range(len(bboxes)):
-        #cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
+        # cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
         box = np.int0(cv2.boxPoints(bboxes[i]))
 
-        #mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
-        #mask = ctx.image * mask
+        # mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
+        # mask = ctx.image * mask
         maxp = np.max(box, axis=0) + 2
         minp = np.min(box, axis=0) - 2
-        #maxp = maxp.astype(np.int32)
-        #minp = minp.astype(np.int32)
+        # maxp = maxp.astype(np.int32)
+        # minp = minp.astype(np.int32)
         y1 = max(0, minp[1])
         y2 = min(ctx.image.shape[0], maxp[1])
         x1 = max(0, minp[0])
@@ -254,11 +258,11 @@ def postprocess_boxes(outputs, ctx):
         if text_img.shape[0] < 1 or text_img.shape[1] < 1:
             logging.info('Skip box: {}'.format(box))
             continue
-        #if bboxes[i][1][0]>bboxes[i][1][1]:
+        # if bboxes[i][1][0]>bboxes[i][1][1]:
         #    angle = -1*bboxes[i][2]
-        #else:
+        # else:
         #    angle = -1*(90+bboxes[i][2])
-        #if angle!=0:
+        # if angle!=0:
         #    text_img = rotate_bound(text_img,angle)
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
@@ -268,7 +272,6 @@ def postprocess_boxes(outputs, ctx):
         encoded = base64.encodebytes(buf).decode()
         outimages.append(encoded)
         outscores.append(-1 * bboxes[i][2])
-
 
     if out_mask is not None:
         ctx.image = ctx.image.astype(np.float32) * np.expand_dims(out_mask, 2)
@@ -286,22 +289,31 @@ def postprocess_boxes(outputs, ctx):
         }
 
 
+def get_text(predictions):
+    line = []
+    end_line = len(chrset_index) - 1
+    for i in predictions:
+        if i == end_line:
+            break
+        t = chrset_index.get(i, -1)
+        if t == -1:
+            continue
+        line.append(t)
+    return ''.join(line)
+
+
 def final_postprocess(outputs_it, ctx):
     n = 0
     table = []
     for outputs in outputs_it:
-        predictions = outputs['output']
-        line = []
-        end_line = len(chrset_index)-1
-        for i in predictions[0]:
-            if i == end_line:
-                break
-            t = chrset_index.get(i, -1)
-            if t == -1:
-                continue
-            line.append(t)
-        line = ''.join(line)
-        logging.info('Found text: {}'.format(line))
+        line = ''
+        for k, v in outputs.items():
+            v = get_text(v[0])
+            logging.info('{}: {}'.format(k, v))
+            if k == '0':
+                line = v
+
+        logging.info('Best text: {}'.format(line))
         table.append(
             {
                 'type': 'text',
