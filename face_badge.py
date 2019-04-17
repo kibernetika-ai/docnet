@@ -75,15 +75,15 @@ def find_people(image,draw_image,ctx):
     images = []
     if bboxes_raw is not None:
         for box in bboxes_raw:
-            xmin = box[3] * w
-            ymin = box[4] * h
-            xmax = box[5] * w
-            ymax = box[6] * h
+            xmin = int(box[3] * w)
+            ymin = int(box[4] * h)
+            xmax = int(box[5] * w)
+            ymax = int(box[6] * h)
             bw = xmax-xmin
             bh = ymax-ymin
-            xmin = int(max(xmin-bw,0))
-            xmax = int(min(xmax+bw,w))
-            ymax = int(min(ymax+bh*4,h))
+            xmin = max(xmin-bw,0)
+            xmax = min(xmax+bw,w)
+            ymax = min(ymax+bh*4,h)
             images.append((ymin,ymax,image[ymin:ymax,xmin:xmax,:]))
             draw_image = cv2.rectangle(draw_image,(xmin,ymin),(xmax,ymax),(0,255,0), thickness=2)
     return images,draw_image
