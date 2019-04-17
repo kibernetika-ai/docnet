@@ -245,7 +245,7 @@ def main():
     p.start()
     local_result = None
     last_result = None
-    show_size = 1248
+    show_size = 768
     try:
         doit = True
 
