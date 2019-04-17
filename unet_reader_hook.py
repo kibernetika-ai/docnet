@@ -344,7 +344,7 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
     height = int(h / ratio)
     width = min(infer_width,width)
     im = cv2.resize(im, (width, height), interpolation=cv2.INTER_LINEAR)
-    cv2.col
+
     pw = max(0, infer_width - im.shape[1])
     ph = max(0, infer_height - im.shape[0])
     im = np.pad(im, ((0, ph), (0, pw), (0, 0)), 'constant', constant_values=0)
