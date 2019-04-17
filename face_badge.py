@@ -81,9 +81,9 @@ def find_people(image,draw_image,ctx):
             ymax = int(box[6] * h)
             bw = xmax-xmin
             bh = ymax-ymin
-            xmin = max(xmin-bw,0)
-            xmax = min(xmax+bw,w)
-            ymax = min(ymax+bh*4,h)
+            xmin = max(xmin-bw/2,0)
+            xmax = min(xmax+bw/2,w)
+            ymax = min(ymax+bh*3,h)
             images.append((ymin,ymax,image[ymin:ymax,xmin:xmax,:]))
             draw_image = cv2.rectangle(draw_image,(xmin,ymin),(xmax,ymax),(0,255,0), thickness=2)
     return images,draw_image
