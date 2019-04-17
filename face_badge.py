@@ -80,7 +80,7 @@ def find_people(image,draw_image,ctx):
             xmax = box[5] * w
             ymax = box[6] * h
             bw = xmax-xmin
-            bh = ymax=ymin
+            bh = ymax-ymin
             xmin = max(xmin-bw,0)
             xmax = min(xmax+bw,w)
             ymax = min(ymax+bh*4,h)
