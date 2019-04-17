@@ -252,7 +252,7 @@ def postprocess_boxes(outputs, ctx):
             text_img = rotate_bound(text_img,angle)
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
-        to_predict.append(np.expand_dims(text_img, 0))
+        to_predict.append(np.expand_dims(text_img.astype(np.float32) / 127.5 - 1, 0))
         _, buf = cv2.imencode('.png', text_img[:, :, :])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
@@ -320,7 +320,6 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
         width = int(w / ratio)
         height = int(h / ratio)
         im = cv2.resize(im, (width, height), interpolation=cv2.INTER_LINEAR)
-    im = im.astype(np.float32) / 127.5 - 1
     pw = max(0, infer_width - im.shape[1])
     ph = max(0, infer_height - im.shape[0])
     im = np.pad(im, ((0, ph), (0, pw), (0, 0)), 'constant', constant_values=0)
