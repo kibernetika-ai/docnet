@@ -335,9 +335,10 @@ def final_postprocess(outputs_it, ctx):
 def norm_image_for_text_prediction(im, infer_height, infer_width):
     w = im.shape[1]
     h = im.shape[0]
-    ration_w = max(w / infer_width, 1.0)
-    ration_h = max(h / infer_height, 1.0)
-    ratio = max(ration_h, ration_w)
+    #ration_w = max(w / infer_width, 1.0)
+    #ration_h = max(h / infer_height, 1.0)
+    #ratio = max(ration_h, ration_w)
+    ratio = h/infer_height
     if ratio > 1:
         width = int(w / ratio)
         height = int(h / ratio)
