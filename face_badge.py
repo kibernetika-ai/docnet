@@ -94,7 +94,7 @@ def process(inputs, ctx):
     link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:,:,::-1]
     images,image = find_people(image.copy(),image,ctx)
-    r_, buf = cv2.imencode('.png', image[:, :, ::-1])
+    r_, buf = cv2.imencode('.png', image.copy()[:, :, ::-1])
     image = np.array(buf).tostring()
     return {
         'output': image,
