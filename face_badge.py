@@ -62,7 +62,7 @@ MAX_DIM = 1024.0
 
 
 def find_people(image,draw_image,ctx):
-    data = cv2.resize((300, 300), cv2.INTER_LINEAR)
+    data = cv2.resize(image,(300, 300), cv2.INTER_LINEAR)
     data = np.array(data).transpose([2, 0, 1]).reshape(1, 3, 300, 300)
     # convert to BGR
     data = data[:, ::-1, :, :]
