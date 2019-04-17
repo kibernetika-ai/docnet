@@ -343,7 +343,13 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
     width = int(w / ratio)
     height = int(h / ratio)
     width = min(infer_width,width)
-    im = cv2.resize(im, (width, height), interpolation=cv2.INTER_LINEAR)
+    im = cv2.cvtColor(im,cv2.COLOR_RGB2GRAY)
+
+    im[np.greater(im,100)]=255
+
+    im = cv2.cvtColor(im,cv2.COLOR_GRAY2RGB)
+
+    im = cv2.resize(im, (width, height), interpolation=cv2.INTER_CUBIC)
 
     pw = max(0, infer_width - im.shape[1])
     ph = max(0, infer_height - im.shape[0])
