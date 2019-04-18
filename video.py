@@ -164,7 +164,7 @@ def main():
                 last_result = make_small(sframe, show_size // 2)
             f2 = np.concatenate([last_result, local_result], axis=1)
             f1 = np.concatenate([f1, f2], axis=0)
-            #cv2.imshow('Video', f1)
+            cv2.imshow('Video', f1)
             if lock.acquire(blocking=False):
                 global to_process
                 to_process = frame
@@ -174,10 +174,10 @@ def main():
                     last_result = make_small(last_processed, show_size // 2)
                     # cv2.imshow('Video', frame)
                 lock.release()
-            #key = cv2.waitKey(1)
-            # Wait 'q' or Esc
-            #if key == ord('q') or key == 27:
-            #    break
+            key = cv2.waitKey(1)
+            #Wait 'q' or Esc
+            if key == ord('q') or key == 27:
+                break
 
     except (KeyboardInterrupt, SystemExit) as e:
         print('Caught %s: %s' % (e.__class__.__name__, e))
