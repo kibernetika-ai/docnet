@@ -180,6 +180,7 @@ def process(inputs, ctx):
     table,image = find_people(image[:, :, ::-1], image, ctx,[])
     r_, buf = cv2.imencode('.png', image)
     image = np.array(buf).tostring()
+    table = json.dumps(table)
     return {
         'output': image,
         'table_output': table,
