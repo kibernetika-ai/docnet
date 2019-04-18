@@ -60,6 +60,7 @@ def fix_length(l, b):
 
 MAX_DIM = 1024.0
 
+
 def adjust_size(image):
     w = image.shape[1]
     h = image.shape[0]
@@ -77,11 +78,12 @@ def adjust_size(image):
     h = fix_length(h, 32)
     return cv2.resize(image, (w, h))
 
-def badge_select(outputs,image,draw_image,offset,ctx):
+
+def badge_select(outputs, image, draw_image, offset, ctx):
     cls = outputs['pixel_pos_scores'][0]
     links = outputs['link_pos_scores'][0]
     mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
-    bboxes = maskToBoxes(mask, (image.shape[1],image.shape[0]))
+    bboxes = maskToBoxes(mask, (image.shape[1], image.shape[0]))
     outimages = []
     outscores = []
     for i in range(len(bboxes)):
@@ -96,12 +98,12 @@ def badge_select(outputs,image,draw_image,offset,ctx):
         if text_img.shape[0] < 1 or text_img.shape[1] < 1:
             logging.info('Skip box: {}'.format(box))
             continue
-        if bboxes[i][1][0]>bboxes[i][1][1]:
-            angle = -1*bboxes[i][2]
+        if bboxes[i][1][0] > bboxes[i][1][1]:
+            angle = -1 * bboxes[i][2]
         else:
-            angle = -1*(90+bboxes[i][2])
-        if angle!=0:
-            text_img = rotate_bound(text_img,angle)
+            angle = -1 * (90 + bboxes[i][2])
+        if angle != 0:
+            text_img = rotate_bound(text_img, angle)
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
@@ -113,12 +115,13 @@ def badge_select(outputs,image,draw_image,offset,ctx):
     for i in bboxes:
         box = cv2.boxPoints(i)
         box = np.int0(box)
-        box = box+np.array([[offset[0],offset[1]]])
+        box = box + np.array([[offset[0], offset[1]]])
         draw_image = cv2.drawContours(draw_image, [box], 0, (255, 0, 0), 2)
     return draw_image
 
-def find_people(image,draw_image,ctx):
-    data = cv2.resize(image,(300, 300), cv2.INTER_LINEAR)
+
+def find_people(image, draw_image, ctx):
+    data = cv2.resize(image, (300, 300), cv2.INTER_LINEAR)
     data = np.array(data).transpose([2, 0, 1]).reshape(1, 3, 300, 300)
     # convert to BGR
     data = data[:, ::-1, :, :]
@@ -134,33 +137,33 @@ def find_people(image,draw_image,ctx):
             ymin = int(box[4] * h)
             xmax = int(box[5] * w)
             ymax = int(box[6] * h)
-            bw = xmax-xmin
-            bh = ymax-ymin
-            xmin = max(xmin-int(bw/2),0)
-            xmax = min(xmax+int(bw/2),w)
-            ymax = min(ymax+bh*3,h)
-            box_image_original = image[ymin:ymax,xmin:xmax,:]
+            bw = xmax - xmin
+            bh = ymax - ymin
+            xmin = max(xmin - int(bw / 2), 0)
+            xmax = min(xmax + int(bw / 2), w)
+            ymax = min(ymax + bh * 3, h)
+            box_image_original = image[ymin:ymax, xmin:xmax, :]
             box_image = adjust_size(box_image_original)
             box_image = box_image.astype(np.float32) / 255.0
             box_image = np.expand_dims(box_image, 0)
             outputs = ctx.drivers[1].predict({'image': box_image})
-            draw_image = badge_select(outputs,box_image_original,draw_image,(xmin,ymin),ctx)
-            draw_image = cv2.rectangle(draw_image,(xmin,ymin),(xmax,ymax),(0,255,0), thickness=2)
+            draw_image = badge_select(outputs, box_image_original, draw_image, (xmin, ymin), ctx)
+            draw_image = cv2.rectangle(draw_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
 
     return draw_image
+
 
 def process(inputs, ctx):
     image = inputs['image'][0]
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
     ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
-    image = find_people(image[:,:,::-1],image,ctx)
-    r_, buf = cv2.imencode('.png',image)
+    image = find_people(image[:, :, ::-1], image, ctx)
+    r_, buf = cv2.imencode('.png', image)
     image = np.array(buf).tostring()
     return {
         'output': image,
     }
-
 
 
 def findRoot(point, group_mask):
@@ -279,9 +282,6 @@ def rotate_bound(image, angle):
     return cv2.warpAffine(image, M, (nW, nH))
 
 
-
-
-
 def get_text(predictions):
     line = []
     end_line = len(chrset_index) - 1
@@ -328,20 +328,20 @@ def final_postprocess(outputs_it, ctx):
 def norm_image_for_text_prediction(im, infer_height, infer_width):
     w = im.shape[1]
     h = im.shape[0]
-    #ration_w = max(w / infer_width, 1.0)
-    #ration_h = max(h / infer_height, 1.0)
-    #ratio = max(ration_h, ration_w)
-    ratio = h/infer_height
-    #if ratio > 1:
+    # ration_w = max(w / infer_width, 1.0)
+    # ration_h = max(h / infer_height, 1.0)
+    # ratio = max(ration_h, ration_w)
+    ratio = h / infer_height
+    # if ratio > 1:
     width = int(w / ratio)
     height = int(h / ratio)
-    width = min(infer_width,width)
-    #im = cv2.cvtColor(im,cv2.COLOR_RGB2GRAY)
+    width = min(infer_width, width)
+    # im = cv2.cvtColor(im,cv2.COLOR_RGB2GRAY)
 
-    #im[np.greater(im,200)]=255
-    #im[np.less(im,100)]=0
+    # im[np.greater(im,200)]=255
+    # im[np.less(im,100)]=0
 
-    #im = cv2.cvtColor(im,cv2.COLOR_GRAY2RGB)
+    # im = cv2.cvtColor(im,cv2.COLOR_GRAY2RGB)
 
     im = cv2.resize(im, (width, height), interpolation=cv2.INTER_CUBIC)
 
@@ -349,6 +349,3 @@ def norm_image_for_text_prediction(im, infer_height, infer_width):
     ph = max(0, infer_height - im.shape[0])
     im = np.pad(im, ((0, ph), (0, pw), (0, 0)), 'constant', constant_values=0)
     return im
-
-
-
