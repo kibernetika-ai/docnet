@@ -60,6 +60,62 @@ def fix_length(l, b):
 
 MAX_DIM = 1024.0
 
+def adjust_size(image):
+    w = image.shape[1]
+    h = image.shape[0]
+    if w > h:
+        if w > MAX_DIM:
+            ratio = MAX_DIM / float(w)
+            h = int(float(h) * ratio)
+            w = MAX_DIM
+    else:
+        if h > MAX_DIM:
+            ratio = MAX_DIM / float(h)
+            w = int(float(w) * ratio)
+            h = MAX_DIM
+    w = fix_length(w, 32)
+    h = fix_length(h, 32)
+    return cv2.resize(image, (w, h))
+
+def badge_select(outputs,image,draw_image,offset,ctx):
+    cls = outputs['pixel_pos_scores'][0]
+    links = outputs['link_pos_scores'][0]
+    mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
+    bboxes = maskToBoxes(mask, (image.shape[1],image.shape[0]))
+    outimages = []
+    outscores = []
+    for i in range(len(bboxes)):
+        box = np.int0(cv2.boxPoints(bboxes[i]))
+        maxp = np.max(box, axis=0) + 2
+        minp = np.min(box, axis=0) - 2
+        y1 = max(0, minp[1])
+        y2 = min(image.shape[0], maxp[1])
+        x1 = max(0, minp[0])
+        x2 = min(image.shape[1], maxp[0])
+        text_img = image[y1:y2, x1:x2, :]
+        if text_img.shape[0] < 1 or text_img.shape[1] < 1:
+            logging.info('Skip box: {}'.format(box))
+            continue
+        if bboxes[i][1][0]>bboxes[i][1][1]:
+            angle = -1*bboxes[i][2]
+        else:
+            angle = -1*(90+bboxes[i][2])
+        if angle!=0:
+            text_img = rotate_bound(text_img,angle)
+
+        text_img = norm_image_for_text_prediction(text_img, 32, 320)
+        _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
+        buf = np.array(buf).tostring()
+        encoded = base64.encodebytes(buf).decode()
+        outimages.append(encoded)
+        outscores.append(-1 * bboxes[i][2])
+
+    for i in bboxes:
+        box = cv2.boxPoints(i)
+        box = np.int0(box)
+        box = box+np.array([[offset[0],offset[1]]])
+        draw_image = cv2.drawContours(draw_image, [box], 0, (255, 0, 0), 2)
+    return draw_image
 
 def find_people(image,draw_image,ctx):
     data = cv2.resize(image,(300, 300), cv2.INTER_LINEAR)
@@ -72,7 +128,6 @@ def find_people(image,draw_image,ctx):
 
     w = image.shape[1]
     h = image.shape[0]
-    images = []
     if bboxes_raw is not None:
         for box in bboxes_raw:
             xmin = int(box[3] * w)
@@ -84,54 +139,28 @@ def find_people(image,draw_image,ctx):
             xmin = max(xmin-int(bw/2),0)
             xmax = min(xmax+int(bw/2),w)
             ymax = min(ymax+bh*3,h)
-            images.append((ymin,ymax,image[ymin:ymax,xmin:xmax,:]))
+            box_image_original = image[ymin:ymax,xmin:xmax,:]
+            box_image = adjust_size(box_image_original)
+            box_image = box_image.astype(np.float32) / 255.0
+            box_image = np.expand_dims(box_image, 0)
+            outputs = ctx.drivers[1].predict({'image': box_image})
+            draw_image = badge_select(outputs,box_image_original,draw_image,(xmin,ymin),ctx)
             draw_image = cv2.rectangle(draw_image,(xmin,ymin),(xmax,ymax),(0,255,0), thickness=2)
-    return images,draw_image
+
+    return draw_image
 
 def process(inputs, ctx):
     image = inputs['image'][0]
-    pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
-    link_threshold = float(inputs.get('link_threshold', 0.5))
+    ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
+    ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
-    images,image = find_people(image[:,:,::-1],image,ctx)
+    image = find_people(image[:,:,::-1],image,ctx)
     r_, buf = cv2.imencode('.png',image)
     image = np.array(buf).tostring()
     return {
         'output': image,
     }
 
-def preprocess_boxes(inputs, ctx):
-    image = inputs['image'][0]
-    ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
-    ctx.resolution = int(inputs.get('resolution', 320))
-    ctx.link_threshold = float(inputs.get('link_threshold', 0))
-    logging.info('Output type: {}'.format(inputs.get('out_type', ['Box'])[0].decode("utf-8")))
-    ctx.out_type = out_types.get(inputs.get('out_type', ['Box'])[0].decode("utf-8"), 0)
-    image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
-    w = image.shape[1]
-    h = image.shape[0]
-    ctx.ratio = 1.0
-    if w > h:
-        if w > MAX_DIM:
-            ctx.ratio = MAX_DIM / float(w)
-            h = int(float(h) * ctx.ratio)
-            w = MAX_DIM
-    else:
-        if h > MAX_DIM:
-            ctx.ratio = MAX_DIM / float(h)
-            w = int(float(w) * ctx.ratio)
-            h = MAX_DIM
-    w = fix_length(w, 32)
-    h = fix_length(h, 32)
-    ctx.image = image[:, :, ::-1].copy()
-    image = cv2.resize(ctx.image, (w, h))
-    # ctx.image = image
-    # image = cv2.resize(image, (ctx.resolution, ctx.resolution))
-    image = image.astype(np.float32) / 255.0
-    image = np.expand_dims(image, 0)
-    return {
-        'image': image,
-    }
 
 
 def findRoot(point, group_mask):
@@ -250,70 +279,7 @@ def rotate_bound(image, angle):
     return cv2.warpAffine(image, M, (nW, nH))
 
 
-def postprocess_boxes(outputs, ctx):
-    cls = outputs['pixel_pos_scores'][0]
-    links = outputs['link_pos_scores'][0]
-    out_mask = None
-    if ctx.out_type == 1:
-        out_mask = cv2.resize(cls, (ctx.image.shape[1], ctx.image.shape[0]), interpolation=cv2.INTER_NEAREST)
-        # out_mask[out_mask < ctx.pixel_threshold] = 0
-    elif ctx.out_type > 1:
-        out_mask = cv2.resize(links[:, :, ctx.out_type - 2], (ctx.image.shape[1], ctx.image.shape[0]),
-                              interpolation=cv2.INTER_NEAREST)
-        ##out_mask[out_mask < ctx.link_threshold] = 0
 
-    mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
-    bboxes = maskToBoxes(mask, (ctx.image.shape[1], ctx.image.shape[0]))
-    to_predict = []
-    outimages = []
-    outscores = []
-    for i in range(len(bboxes)):
-        # cmask = np.zeros((ctx.image.shape[0], ctx.image.shape[1], 3), np.float32)
-        box = np.int0(cv2.boxPoints(bboxes[i]))
-
-        # mask = cv2.drawContours(cmask, [box], 0, (1, 1, 1), -1)
-        # mask = ctx.image * mask
-        maxp = np.max(box, axis=0) + 2
-        minp = np.min(box, axis=0) - 2
-        # maxp = maxp.astype(np.int32)
-        # minp = minp.astype(np.int32)
-        y1 = max(0, minp[1])
-        y2 = min(ctx.image.shape[0], maxp[1])
-        x1 = max(0, minp[0])
-        x2 = min(ctx.image.shape[1], maxp[0])
-        text_img = ctx.image[y1:y2, x1:x2, :]
-        if text_img.shape[0] < 1 or text_img.shape[1] < 1:
-            logging.info('Skip box: {}'.format(box))
-            continue
-        if bboxes[i][1][0]>bboxes[i][1][1]:
-            angle = -1*bboxes[i][2]
-        else:
-            angle = -1*(90+bboxes[i][2])
-        if angle!=0:
-            text_img = rotate_bound(text_img,angle)
-
-        text_img = norm_image_for_text_prediction(text_img, 32, 320)
-        to_predict.append(np.expand_dims(text_img.astype(np.float32) / 255.0, 0))
-        _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
-        buf = np.array(buf).tostring()
-        encoded = base64.encodebytes(buf).decode()
-        outimages.append(encoded)
-        outscores.append(-1 * bboxes[i][2])
-
-    if out_mask is not None:
-        ctx.image = ctx.image.astype(np.float32) * np.expand_dims(out_mask, 2)
-        ctx.image = ctx.image.astype(np.uint8)
-    else:
-        for i in bboxes:
-            box = cv2.boxPoints(i)
-            box = np.int0(box)
-            ctx.image = cv2.drawContours(ctx.image, [box], 0, (255, 0, 0), 2)
-    ctx.outscores = outscores
-    ctx.outimages = outimages
-    for i in to_predict:
-        yield {
-            'images': i,
-        }
 
 
 def get_text(predictions):
