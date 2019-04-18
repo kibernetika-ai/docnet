@@ -183,6 +183,8 @@ def process_internal(inputs, ctx):
 def process(inputs, ctx):
     ctx.add_text_image = True
     image = inputs['image'][0]
+    ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
+    ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
     table,image = find_people(image[:, :, ::-1].copy(), image, ctx,[])
     r_, buf = cv2.imencode('.png', image)
