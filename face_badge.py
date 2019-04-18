@@ -81,7 +81,7 @@ def adjust_size(image):
 
 def extract_text(image, ctx):
     image = np.expand_dims(image.astype(np.float32) / 255.0, 0)
-    outputs = ctx.drivers[3].predict({'images': image})
+    outputs = ctx.drivers[2].predict({'images': image})
     line = ''
     for k, v in outputs.items():
         v = get_text(v[0])
