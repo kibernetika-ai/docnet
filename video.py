@@ -75,7 +75,7 @@ def process():
     drv = driver.load_driver('multimodel')
     serving = drv()
     kwargs = {'ml-serving-drivers': ['openvino', 'tensorflow', 'tensorflow']}
-    serving.load_model(['.vidos/faces', '.vidos/m1', '.vidos/m2'], **kwargs)
+    serving.load_model(['./vidos/faces', './vidos/m1', './vidos/m2'], **kwargs)
     global to_process
     i_name = 1
     while runned:
