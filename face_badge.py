@@ -79,13 +79,25 @@ def adjust_size(image):
     return cv2.resize(image, (w, h))
 
 
-def badge_select(outputs, image, draw_image, offset, ctx):
+def extract_text(image, ctx):
+    image = np.expand_dims(image.astype(np.float32) / 255.0, 0)
+    outputs = ctx.drivers[3].predict({'images': image})
+    line = ''
+    for k, v in outputs.items():
+        v = get_text(v[0])
+        logging.info('{}: {}'.format(k, v))
+        if k == '0':
+            line = v
+
+    logging.info('Best text: {}'.format(line))
+    return line
+
+
+def badge_select(outputs, image, draw_image, offset, ctx,table):
     cls = outputs['pixel_pos_scores'][0]
     links = outputs['link_pos_scores'][0]
     mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
     bboxes = maskToBoxes(mask, (image.shape[1], image.shape[0]))
-    outimages = []
-    outscores = []
     for i in range(len(bboxes)):
         box = np.int0(cv2.boxPoints(bboxes[i]))
         maxp = np.max(box, axis=0) + 2
@@ -106,21 +118,28 @@ def badge_select(outputs, image, draw_image, offset, ctx):
             text_img = rotate_bound(text_img, angle)
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
+        text = extract_text(text_img,ctx)
         _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
         buf = np.array(buf).tostring()
         encoded = base64.encodebytes(buf).decode()
-        outimages.append(encoded)
-        outscores.append(-1 * bboxes[i][2])
+        table.append(
+            {
+                'type': 'text',
+                'name': text,
+                'prob': float(-1 * bboxes[i][2]),
+                'image': encoded,
+            }
+        )
 
     for i in bboxes:
         box = cv2.boxPoints(i)
         box = np.int0(box)
         box = box + np.array([[offset[0], offset[1]]])
         draw_image = cv2.drawContours(draw_image, [box], 0, (255, 0, 0), 2)
-    return draw_image
+    return table,draw_image
 
 
-def find_people(image, draw_image, ctx):
+def find_people(image, draw_image, ctx,table):
     data = cv2.resize(image, (300, 300), cv2.INTER_LINEAR)
     data = np.array(data).transpose([2, 0, 1]).reshape(1, 3, 300, 300)
     # convert to BGR
@@ -147,10 +166,10 @@ def find_people(image, draw_image, ctx):
             box_image = box_image.astype(np.float32) / 255.0
             box_image = np.expand_dims(box_image, 0)
             outputs = ctx.drivers[1].predict({'image': box_image})
-            draw_image = badge_select(outputs, box_image_original, draw_image, (xmin, ymin), ctx)
+            table,draw_image = badge_select(outputs, box_image_original, draw_image, (xmin, ymin), ctx,table)
             draw_image = cv2.rectangle(draw_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
 
-    return draw_image
+    return table,draw_image
 
 
 def process(inputs, ctx):
@@ -158,11 +177,12 @@ def process(inputs, ctx):
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
     ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
-    image = find_people(image[:, :, ::-1], image, ctx)
+    table,image = find_people(image[:, :, ::-1], image, ctx,[])
     r_, buf = cv2.imencode('.png', image)
     image = np.array(buf).tostring()
     return {
         'output': image,
+        'table_output': table,
     }
 
 
