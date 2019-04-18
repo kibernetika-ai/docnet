@@ -87,8 +87,8 @@ def process():
         print('start frame')
         to_process = None
         results = serving.predict_hooks({
-            'pixel_threshold': 0.7,
-            'link_threshold': 0.7,
+            'pixel_threshold': 0.5,
+            'link_threshold': 0.5,
             'image': frame
         })
         frame = results['output']
