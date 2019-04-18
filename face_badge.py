@@ -177,7 +177,7 @@ def process(inputs, ctx):
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
     ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
-    table,image = find_people(image[:, :, ::-1], image, ctx,[])
+    table,image = find_people(image[:, :, ::-1].copy(), image, ctx,[])
     r_, buf = cv2.imencode('.png', image)
     image = np.array(buf).tostring()
     table = json.dumps(table)
