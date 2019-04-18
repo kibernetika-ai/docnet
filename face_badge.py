@@ -82,18 +82,17 @@ def adjust_size(image):
 def extract_text(image, ctx):
     image = np.expand_dims(image.astype(np.float32) / 255.0, 0)
     outputs = ctx.drivers[2].predict({'images': image})
-    line = ''
-    for k, v in outputs.items():
-        v = get_text(v[0])
-        logging.info('{}: {}'.format(k, v))
-        if k == '0':
-            line = v
-
-    logging.info('Best text: {}'.format(line))
-    return line
+    text = outputs['output'][0]
+    text = get_text(text)
+    logging.info('Found: {}'.format(text))
+    return text
 
 
-def badge_select(outputs, image, draw_image, offset, ctx,table):
+def badge_select(image, draw_image, offset, ctx,table):
+    box_image = adjust_size(image)
+    box_image = box_image.astype(np.float32) / 255.0
+    box_image = np.expand_dims(box_image, 0)
+    outputs = ctx.drivers[1].predict({'image': box_image})
     cls = outputs['pixel_pos_scores'][0]
     links = outputs['link_pos_scores'][0]
     mask = decodeImageByJoin(cls, links, ctx.pixel_threshold, ctx.link_threshold)
@@ -108,7 +107,6 @@ def badge_select(outputs, image, draw_image, offset, ctx,table):
         x2 = min(image.shape[1], maxp[0])
         text_img = image[y1:y2, x1:x2, :]
         if text_img.shape[0] < 1 or text_img.shape[1] < 1:
-            logging.info('Skip box: {}'.format(box))
             continue
         if bboxes[i][1][0] > bboxes[i][1][1]:
             angle = -1 * bboxes[i][2]
@@ -119,9 +117,12 @@ def badge_select(outputs, image, draw_image, offset, ctx,table):
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
         text = extract_text(text_img,ctx)
-        _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
-        buf = np.array(buf).tostring()
-        encoded = base64.encodebytes(buf).decode()
+        if ctx.add_text_image:
+            _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
+            buf = np.array(buf).tostring()
+            encoded = base64.encodebytes(buf).decode()
+        else:
+            encoded = ''
         table.append(
             {
                 'type': 'text',
@@ -162,20 +163,26 @@ def find_people(image, draw_image, ctx,table):
             xmax = min(xmax + int(bw / 2), w)
             ymax = min(ymax + bh * 3, h)
             box_image_original = image[ymin:ymax, xmin:xmax, :]
-            box_image = adjust_size(box_image_original)
-            box_image = box_image.astype(np.float32) / 255.0
-            box_image = np.expand_dims(box_image, 0)
-            outputs = ctx.drivers[1].predict({'image': box_image})
-            table,draw_image = badge_select(outputs, box_image_original, draw_image, (xmin, ymin), ctx,table)
+            table,draw_image = badge_select(box_image_original, draw_image, (xmin, ymin), ctx,table)
             draw_image = cv2.rectangle(draw_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
 
     return table,draw_image
 
 
-def process(inputs, ctx):
-    image = inputs['image'][0]
+def process_internal(inputs, ctx):
+    image = inputs['image']
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
     ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
+    ctx.add_text_image = False
+    table,image = find_people(image[:, :, ::-1].copy(), image, ctx,[])
+    return {
+        'output': image,
+        'table_output': table,
+    }
+
+def process(inputs, ctx):
+    ctx.add_text_image = True
+    image = inputs['image'][0]
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
     table,image = find_people(image[:, :, ::-1].copy(), image, ctx,[])
     r_, buf = cv2.imencode('.png', image)
@@ -314,36 +321,6 @@ def get_text(predictions):
             continue
         line.append(t)
     return ''.join(line)
-
-
-def final_postprocess(outputs_it, ctx):
-    n = 0
-    table = []
-    for outputs in outputs_it:
-        line = ''
-        for k, v in outputs.items():
-            v = get_text(v[0])
-            logging.info('{}: {}'.format(k, v))
-            if k == '0':
-                line = v
-
-        logging.info('Best text: {}'.format(line))
-        table.append(
-            {
-                'type': 'text',
-                'name': line,
-                'prob': float(ctx.outscores[n]),
-                'image': ctx.outimages[n]
-            }
-        )
-        n += 1
-    _, buf = cv2.imencode('.png', ctx.image[:, :, ::-1])
-    image = np.array(buf).tostring()
-    table = json.dumps(table)
-    return {
-        'output': image,
-        'table_output': table,
-    }
 
 
 def norm_image_for_text_prediction(im, infer_height, infer_width):
