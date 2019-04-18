@@ -7,6 +7,7 @@ import numpy as np
 import math
 import fuzzyset
 import threading
+import face_badge
 
 lock = threading.Lock()
 
@@ -74,7 +75,7 @@ def process():
     names.add('stas')
     names.add('khirman')
     #drv = driver.load_driver('multimodel')
-    serving = multimodel.MultiModelDriver()
+    serving = multimodel.MultiModelDriver(init_hook=face_badge.init_hook, process=face_badge.process_internal)
     kwargs = {'ml-serving-drivers': ['openvino', 'tensorflow', 'tensorflow']}
     serving.load_model(['./vidos/faces/face-detection.xml', './vidos/m1', './vidos/m2'], **kwargs)
     global to_process
