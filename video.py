@@ -2,6 +2,7 @@ import cv2
 import argparse
 import time
 from ml_serving.drivers import driver
+from ml_serving.drivers import multimodel
 import numpy as np
 import math
 import fuzzyset
@@ -72,8 +73,8 @@ def process():
     names.add('khirman stas')
     names.add('stas')
     names.add('khirman')
-    drv = driver.load_driver('multimodel')
-    serving = drv()
+    #drv = driver.load_driver('multimodel')
+    serving = multimodel.MultiModelDriver()
     kwargs = {'ml-serving-drivers': ['openvino', 'tensorflow', 'tensorflow']}
     serving.load_model(['./vidos/faces', './vidos/m1', './vidos/m2'], **kwargs)
     global to_process
