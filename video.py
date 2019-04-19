@@ -151,7 +151,7 @@ def process():
                     os.mkdir(to_dir)
                 fname = '{}/auto_{}_{}.jpg'.format(to_dir, int(time.time()), i_name)
                 logging.info('Save new picture: {}'.format(fname))
-                cv2.imwrite(frame, to_save)
+                cv2.imwrite(fname, to_save)
                 global new_count
                 new_count = 1
             global result
