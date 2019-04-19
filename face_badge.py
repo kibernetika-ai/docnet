@@ -88,7 +88,7 @@ def extract_text(image, ctx):
     return text
 
 
-def badge_select(image, draw_image, offset, ctx, table):
+def badge_select(image,face, draw_image, offset, ctx, table):
     box_image = adjust_size(image)
     box_image = box_image.astype(np.float32) / 255.0
     box_image = np.expand_dims(box_image, 0)
@@ -128,7 +128,7 @@ def badge_select(image, draw_image, offset, ctx, table):
                 'type': 'text',
                 'name': text,
                 'prob': float(-1 * bboxes[i][2]),
-                'image': encoded,
+                'image': face,
             }
         )
 
@@ -163,7 +163,12 @@ def find_people(image, draw_image, ctx, table):
             xmax = min(xmax + int(bw / 2), w)
             ymax = min(ymax + bh * 3, h)
             box_image_original = image[ymin:ymax, xmin:xmax, :]
-            table, draw_image = badge_select(box_image_original, draw_image, (xmin, ymin), ctx, table)
+            xmin = max(xmin - int(bw / 2), 0)
+            xmax = min(xmax + int(bw / 2), w)
+            ymax = min(ymax + int(bh /2), h)
+            ymin = max(ymin - int(bh / 2), 0)
+            face = image[ymin:ymax, xmin:xmax, :]
+            table, draw_image = badge_select(box_image_original,face, draw_image, (xmin, ymin), ctx, table)
             draw_image = cv2.rectangle(draw_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
 
     return table, draw_image

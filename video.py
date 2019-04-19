@@ -96,7 +96,8 @@ def reload_classes():
         if new_count > 0:
             new_count = 0
             logging.info('reload')
-            subprocess.check_output(['python', 'svod_rcgn/prepare.py'], cwd=reload_dir)
+            rresult = subprocess.check_output(['python', 'svod_rcgn/prepare.py'], cwd=reload_dir)
+            logging.info(rresult)
 
 
 def process():
