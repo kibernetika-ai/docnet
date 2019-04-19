@@ -5,10 +5,15 @@ import numpy as np
 import fuzzyset
 import threading
 import face_badge
+import time
+import os
+import subprocess
 
 import logging
+
 lock = threading.Lock()
 logging.getLogger().setLevel('INFO')
+
 
 def get_parser():
     parser = argparse.ArgumentParser(
@@ -31,8 +36,24 @@ def get_parser():
         type=str,
         help='Full URL to network camera.',
     )
+    parser.add_argument(
+        '--output',
+        type=str,
+        default='',
+        help='Output path',
+    )
+    parser.add_argument(
+        '--reload',
+        type=str,
+        default='',
+        help='Reload Path',
+    )
     parser.add_argument('--model')
     return parser
+
+
+output_dir = ''
+reload_dir = ''
 
 
 def add_overlays(frame, score, text):
@@ -64,6 +85,16 @@ to_process = None
 result = None
 last_processed = None
 runned = True
+new_count = 0
+
+
+def reload_classes():
+    global new_count
+    while runned:
+        time.sleep(10)
+        if new_count > 0:
+            new_count = 0
+            subprocess.check_output(['python', 'svod_rcgn/prepare.py'], cwd=reload_dir)
 
 
 def process():
@@ -72,7 +103,7 @@ def process():
     names.add('khirman stas')
     names.add('stas')
     names.add('khirman')
-    #drv = driver.load_driver('multimodel')
+    # drv = driver.load_driver('multimodel')
     serving = multimodel.MultiModelDriver(init_hook=face_badge.init_hook, process=face_badge.process_internal)
     kwargs = {'ml-serving-drivers': ['openvino', 'tensorflow', 'tensorflow']}
     serving.load_model(['./vidos/faces/face-detection.xml', './vidos/m1', './vidos/m2'], **kwargs)
@@ -112,7 +143,15 @@ def process():
             found_name = choose_one(names, candidates)
         if found_name is not None:
             add_overlays(frame, found_name[0], found_name[1])
-            cv2.imwrite('results/result_{}.jpg'.format(i_name), frame)
+            to_save = e['image'][:, :, ::-1]
+            if output_dir != '':
+                name = found_name[1].replace(" ", "_")
+                to_dir = '{}/{}'.format(output_dir, name)
+                if not os.path.exists(to_dir):
+                    os.mkdir(to_dir)
+                cv2.imwrite('{}/auto_{}_{}.jpg'.format(to_dir, int(time.time()), i_name), to_save)
+                global new_count
+                new_count = 1
             global result
             result = frame
             i_name += 1
@@ -139,15 +178,20 @@ def make_small(frame, size):
 
 
 def main():
-
     parser = get_parser()
     args = parser.parse_args()
     if args.camera:
         video_capture = cv2.VideoCapture(args.camera)
     else:
         video_capture = cv2.VideoCapture(0)
+    global output_dir
+    output_dir = args.output
+    global reload_dir
+    reload_dir = args.reload
     p = threading.Thread(target=process)
     p.start()
+    r = threading.Thread(target=reload_classes)
+    r.start()
     local_result = None
     last_result = None
     show_size = 768
@@ -175,7 +219,7 @@ def main():
                     # cv2.imshow('Video', frame)
                 lock.release()
             key = cv2.waitKey(1)
-            #Wait 'q' or Esc
+            # Wait 'q' or Esc
             if key == ord('q') or key == 27:
                 break
 
@@ -187,158 +231,6 @@ def main():
     video_capture.release()
     cv2.destroyAllWindows()
     print('Finished')
-
-
-def norm_image_for_text_prediction(im, infer_height, infer_width):
-    w = im.shape[1]
-    h = im.shape[0]
-    # ration_w = max(w / infer_width, 1.0)
-    # ration_h = max(h / infer_height, 1.0)
-    # ratio = max(ration_h, ration_w)
-    ratio = h / infer_height
-    # if ratio > 1:
-    width = int(w / ratio)
-    height = int(h / ratio)
-    width = min(infer_width, width)
-    im = cv2.resize(im, (width, height), interpolation=cv2.INTER_CUBIC)
-    pw = max(0, infer_width - im.shape[1])
-    ph = max(0, infer_height - im.shape[0])
-    im = np.pad(im, ((0, ph), (0, pw), (0, 0)), 'constant', constant_values=0)
-    return im
-
-
-def norm_image_for_text_prediction0(im, infer_height, infer_width):
-    w = im.shape[1]
-    h = im.shape[0]
-    ration_w = max(w / infer_width, 1.0)
-    ration_h = max(h / infer_height, 1.0)
-    ratio = max(ration_h, ration_w)
-    if ratio > 1:
-        width = int(w / ratio)
-        height = int(h / ratio)
-        im = cv2.resize(im, (width, height), interpolation=cv2.INTER_LINEAR)
-    im = im.astype(np.float32) / 255.0
-    pw = max(0, infer_width - im.shape[1])
-    ph = max(0, infer_height - im.shape[0])
-    im = np.pad(im, ((0, ph), (0, pw), (0, 0)), 'constant', constant_values=0)
-    return im
-
-
-def findRoot(point, group_mask):
-    root = point
-    update_parent = False
-    stop_loss = 1000
-    while group_mask[root] != -1:
-        root = group_mask[root]
-        update_parent = True
-        stop_loss -= 1
-        if stop_loss < 0:
-            raise Exception('Stop loss')
-    if update_parent:
-        group_mask[point] = root
-    return root
-
-
-def join(p1, p2, group_mask):
-    root1 = findRoot(p1, group_mask)
-    root2 = findRoot(p2, group_mask)
-    if root1 != root2:
-        group_mask[root1] = root2
-
-
-def get_all(points, w, h, group_mask):
-    root_map = {}
-    mask = np.zeros((h, w), np.int32)
-    for i in range(len(points[0])):
-        point_root = findRoot(points[1][i] + points[0][i] * w, group_mask)
-        if root_map.get(point_root, None) is None:
-            root_map[point_root] = len(root_map) + 1
-        mask[points[0][i], points[1][i]] = root_map[point_root]
-    return mask
-
-
-def decodeImageByJoin(cls, links, cls_threshold, link_threshold):
-    h = cls.shape[0]
-    w = cls.shape[1]
-    pixel_mask = cls >= cls_threshold
-    link_mask = links >= link_threshold
-    y, x = np.where(pixel_mask == True)
-    group_mask = {}
-    for i in range(len(x)):
-        if pixel_mask[y[i], x[i]]:
-            group_mask[y[i] * w + x[i]] = -1
-    for i in range(len(x)):
-        neighbour = 0
-        for ny in range(y[i] - 1, y[i] + 2):
-            for nx in range(x[i] - 1, x[i] + 2):
-                if nx == x[i] and ny == y[i]:
-                    continue
-                if nx >= 0 and nx < w and ny >= 0 and ny < h:
-                    pixel_value = pixel_mask[ny, nx]
-                    link_value = link_mask[ny, nx, neighbour]
-                    if pixel_value and link_value:
-                        join(y[i] * w + x[i], ny * w + nx, group_mask)
-                neighbour += 1
-    return get_all((y, x), w, h, group_mask)
-
-
-def maskToBoxes(mask, image_size, min_area=200, min_height=6):
-    bboxes = []
-    min_val, max_val, _, _ = cv2.minMaxLoc(mask)
-    resized_mask = cv2.resize(mask, image_size, interpolation=cv2.INTER_NEAREST)
-    for i in range(int(max_val)):
-        bbox_mask = resized_mask == (i + 1)
-        bbox_mask = bbox_mask.astype(np.int32)
-        contours = cv2.findContours(bbox_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        contours = contours[0]
-        if len(contours) < 1:
-            continue
-        maxarea = 0
-        maxc = None
-        for j in contours:
-            if len(j) > 1:
-                area = cv2.contourArea(j)
-                if area > maxarea:
-                    maxarea = area
-                    maxc = j
-        if maxc is not None and maxarea > 36:
-            r = cv2.minAreaRect(maxc)
-            if min(r[1][0], r[1][1]) < min_height:
-                continue
-            bboxes.append(r)
-        # if min(r[1][0], r[1][1]) < min_height:
-        #    logging.info('Skip size box {} {}'.format(r, i + 1))
-        #    continue
-        # if r[1][0] * r[1][1] < min_area:
-        #    logging.info('Skip area box {} {}'.format(r, i + 1))
-        #    continue
-        # bboxes.append(r)
-    return bboxes
-
-
-def rotate_bound(image, angle):
-    # grab the dimensions of the image and then determine the
-    # center
-    (h, w) = image.shape[:2]
-    (cX, cY) = (w // 2, h // 2)
-
-    # grab the rotation matrix (applying the negative of the
-    # angle to rotate clockwise), then grab the sine and cosine
-    # (i.e., the rotation components of the matrix)
-    M = cv2.getRotationMatrix2D((cX, cY), -angle, 1.0)
-    cos = np.abs(M[0, 0])
-    sin = np.abs(M[0, 1])
-
-    # compute the new bounding dimensions of the image
-    nW = int((h * sin) + (w * cos))
-    nH = int((h * cos) + (w * sin))
-
-    # adjust the rotation matrix to take into account translation
-    M[0, 2] += (nW / 2) - cX
-    M[1, 2] += (nH / 2) - cY
-
-    # perform the actual rotation and return the image
-    return cv2.warpAffine(image, M, (nW, nH))
 
 
 if __name__ == "__main__":

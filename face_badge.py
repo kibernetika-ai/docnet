@@ -88,7 +88,7 @@ def extract_text(image, ctx):
     return text
 
 
-def badge_select(image, draw_image, offset, ctx,table):
+def badge_select(image, draw_image, offset, ctx, table):
     box_image = adjust_size(image)
     box_image = box_image.astype(np.float32) / 255.0
     box_image = np.expand_dims(box_image, 0)
@@ -116,13 +116,13 @@ def badge_select(image, draw_image, offset, ctx,table):
             text_img = rotate_bound(text_img, angle)
 
         text_img = norm_image_for_text_prediction(text_img, 32, 320)
-        text = extract_text(text_img,ctx)
-        if ctx.add_text_image:
+        text = extract_text(text_img, ctx)
+        if ctx.add_text_image == 'text':
             _, buf = cv2.imencode('.png', text_img[:, :, ::-1])
             buf = np.array(buf).tostring()
             encoded = base64.encodebytes(buf).decode()
-        else:
-            encoded = ''
+        elif ctx.add_text_image == 'original':
+            encoded = image
         table.append(
             {
                 'type': 'text',
@@ -137,10 +137,10 @@ def badge_select(image, draw_image, offset, ctx,table):
         box = np.int0(box)
         box = box + np.array([[offset[0], offset[1]]])
         draw_image = cv2.drawContours(draw_image, [box], 0, (255, 0, 0), 2)
-    return table,draw_image
+    return table, draw_image
 
 
-def find_people(image, draw_image, ctx,table):
+def find_people(image, draw_image, ctx, table):
     data = cv2.resize(image, (300, 300), cv2.INTER_LINEAR)
     data = np.array(data).transpose([2, 0, 1]).reshape(1, 3, 300, 300)
     # convert to BGR
@@ -163,30 +163,31 @@ def find_people(image, draw_image, ctx,table):
             xmax = min(xmax + int(bw / 2), w)
             ymax = min(ymax + bh * 3, h)
             box_image_original = image[ymin:ymax, xmin:xmax, :]
-            table,draw_image = badge_select(box_image_original, draw_image, (xmin, ymin), ctx,table)
+            table, draw_image = badge_select(box_image_original, draw_image, (xmin, ymin), ctx, table)
             draw_image = cv2.rectangle(draw_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
 
-    return table,draw_image
+    return table, draw_image
 
 
 def process_internal(inputs, ctx):
     image = inputs['image']
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
     ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
-    ctx.add_text_image = False
-    table,image = find_people(image[:, :, ::-1].copy(), image, ctx,[])
+    ctx.add_text_image = 'original'
+    table, image = find_people(image[:, :, ::-1].copy(), image, ctx, [])
     return {
         'output': image,
         'table_output': table,
     }
 
+
 def process(inputs, ctx):
-    ctx.add_text_image = True
+    ctx.add_text_image = 'text'
     image = inputs['image'][0]
     ctx.pixel_threshold = float(inputs.get('pixel_threshold', 0.5))
     ctx.link_threshold = float(inputs.get('link_threshold', 0.5))
     image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)
-    table,image = find_people(image[:, :, ::-1].copy(), image, ctx,[])
+    table, image = find_people(image[:, :, ::-1].copy(), image, ctx, [])
     r_, buf = cv2.imencode('.png', image)
     image = np.array(buf).tostring()
     table = json.dumps(table)
