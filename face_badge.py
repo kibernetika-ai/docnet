@@ -153,20 +153,21 @@ def find_people(image, draw_image, ctx, table):
     h = image.shape[0]
     if bboxes_raw is not None:
         for box in bboxes_raw:
-            xmin = int(box[3] * w)
-            ymin = int(box[4] * h)
-            xmax = int(box[5] * w)
-            ymax = int(box[6] * h)
-            bw = xmax - xmin
-            bh = ymax - ymin
-            xmin = max(xmin - int(bw / 2), 0)
-            xmax = min(xmax + int(bw / 2), w)
-            ymax = min(ymax + bh * 3, h)
+            xmin0 = int(box[3] * w)
+            ymin0 = int(box[4] * h)
+            xmax0 = int(box[5] * w)
+            ymax0 = int(box[6] * h)
+            bw = xmax0 - xmin0
+            bh = ymax0 - ymin0
+            xmin = max(xmin0 - int(bw / 2), 0)
+            xmax = min(xmax0 + int(bw / 2), w)
+            ymax = min(ymax0 + bh * 3, h)
+            ymin = ymin0
             box_image_original = image[ymin:ymax, xmin:xmax, :]
-            xmin = max(xmin - int(bw / 2), 0)
-            xmax = min(xmax + int(bw / 2), w)
-            ymax = min(ymax + int(bh /2), h)
-            ymin = max(ymin - int(bh / 2), 0)
+            xmin = max(xmin0 - int(bw / 2), 0)
+            xmax = min(xmax0 + int(bw / 2), w)
+            ymax = min(ymax0 + int(bh /2), h)
+            ymin = max(ymin0 - int(bh / 2), 0)
             face = image[ymin:ymax, xmin:xmax, :]
             table, draw_image = badge_select(box_image_original,face, draw_image, (xmin, ymin), ctx, table)
             draw_image = cv2.rectangle(draw_image, (xmin, ymin), (xmax, ymax), (0, 255, 0), thickness=2)
