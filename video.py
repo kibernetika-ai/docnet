@@ -185,10 +185,20 @@ def make_small(frame, size):
 def main():
     parser = get_parser()
     args = parser.parse_args()
+    real_sence = False
     if args.camera:
-        video_capture = cv2.VideoCapture(args.camera)
+        if args.camera== "realsense":
+            import pyrealsense2 as rs
+            real_sence = True
+            video_capture = rs.pipeline()
+            config = rs.config()
+            config.enable_stream(rs.stream.color, 1920, 1080, rs.format.bgr8,6)
+            video_capture.start(config)
+        else:
+            video_capture = cv2.VideoCapture(args.camera)
     else:
         video_capture = cv2.VideoCapture(0)
+
     global output_dir
     output_dir = args.output
     global reload_dir
@@ -204,7 +214,12 @@ def main():
         doit = True
 
         while doit:
-            _, frame = video_capture.read()
+            if real_sence:
+                frame = video_capture.wait_for_frames()
+                frame = frame.get_color_frame()
+                frame = np.asanyarray(frame.get_data())
+            else:
+                _, frame = video_capture.read()
             sframe = frame.copy()
             f1 = make_small(sframe, show_size)
             if local_result is None:
@@ -233,7 +248,10 @@ def main():
     global runned
     runned = False
     # When everything is done, release the capture
-    video_capture.release()
+    if real_sence:
+        video_capture.stop()
+    else:
+        video_capture.release()
     cv2.destroyAllWindows()
     print('Finished')
 
