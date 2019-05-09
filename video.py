@@ -205,8 +205,9 @@ def main():
     reload_dir = args.reload
     p = threading.Thread(target=process)
     p.start()
-    r = threading.Thread(target=reload_classes)
-    r.start()
+    if len(reload_dir)>0:
+        r = threading.Thread(target=reload_classes)
+        r.start()
     local_result = None
     last_result = None
     show_size = 768
