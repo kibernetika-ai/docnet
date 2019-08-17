@@ -309,11 +309,8 @@ def final_postprocess(outputs_it, ctx):
         line = ''
         for k, v in outputs.items():
             v = get_text(v[0])
-            logging.info('{}: {}'.format(k, v))
-            if k == '0':
-                line = v
+            line = v
 
-        logging.info('Best text: {}'.format(line))
         table.append(
             {
                 'type': 'text',
