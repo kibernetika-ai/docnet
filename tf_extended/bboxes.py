@@ -86,11 +86,11 @@ def bboxes_filter_overlap(labels, bboxes,xs, ys, threshold, scope=None, assign_v
         return labels, bboxes, xs, ys
 
 
-def bboxes_filter_by_shorter_side(labels, bboxes, xs, ys, min_height = 16, max_height = 32, assign_value = None):
+def bboxes_filter_by_shorter_side(scope,labels, bboxes, xs, ys, min_height = 16, max_height = 32, assign_value = None):
     """
     Filtering bboxes by the length of shorter side
     """
-    with tf.name_scope('bboxes_filter_by_shorter_side', [labels, bboxes]):
+    with tf.name_scope(scope,'bboxes_filter_by_shorter_side', [labels, bboxes]):
         bbox_rects = util.min_area_rect(xs, ys)
         ws, hs = bbox_rects[:, 2], bbox_rects[:, 3]
         shorter_sides = tf.minimum(ws, hs)
