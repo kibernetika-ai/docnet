@@ -28,9 +28,9 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     shape = tf.shape(pixel_link_logits)
     pixel_link_logits = tf.reshape(pixel_link_logits, [shape[0], shape[1]* shape[2] * 8, 2])
     pixel_link_scores = tf.nn.softmax(pixel_link_logits)
-    pixel_link_scores = tf.reshape(pixel_link_scores, [shape[0], shape[1], shape[2], 8, 2])
+    pixel_link_scores = tf.reshape(pixel_link_scores[:,:,1], [shape[0], shape[1], shape[2], 8])
     pixel_pos_scores = pixel_cls_scores[:, :, :, 1]
-    link_pos_scores = pixel_link_scores[:, :, :, :, 1]
+    link_pos_scores = pixel_link_scores
     logging.info('final:pixel_cls_logits - {}'.format(pixel_pos_scores.shape))
     logging.info('final:pixel_link_logits - {}'.format(link_pos_scores.shape))
     loss = None
