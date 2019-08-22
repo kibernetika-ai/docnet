@@ -12,6 +12,7 @@ def _flat_pixel_cls_values(values):
 def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=None):
     if mode == tf.estimator.ModeKeys.PREDICT:
         features = features['image']
+        features = tf.reshape(features, [params['batch_size'], params['resolution'], params['resolution'], 3])
     else:
         features = tf.reshape(features, [params['batch_size'], params['resolution'], params['resolution'], 3])
     training = (mode == tf.estimator.ModeKeys.TRAIN)
@@ -29,8 +30,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     pixel_link_scores = tf.nn.softmax(pixel_link_logits)
     pixel_pos_scores = pixel_cls_scores[:, :, :, 1]
     link_pos_scores = pixel_link_scores[:, :, :, :, 1]
-    logging.info('final:pixel_cls_logits - {}'.format(pixel_cls_logits.shape))
-    logging.info('final:pixel_link_logits - {}'.format(pixel_link_logits.shape))
+    logging.info('final:pixel_cls_logits - {}'.format(pixel_pos_scores.shape))
+    logging.info('final:pixel_link_logits - {}'.format(link_pos_scores.shape))
     loss = None
     train_op = None
     hooks = []

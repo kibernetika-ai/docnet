@@ -25,7 +25,7 @@ def export(checkpoint_dir, params):
     )
     params['batch_size']=1
     feature_placeholders = {
-        'image': tf.placeholder(tf.float32, [1, None, None, 3], name='image'),
+        'image': tf.placeholder(tf.float32, [1, params['resolution'], params['resolution'], 3], name='image'),
     }
     receiver = tf.estimator.export.build_raw_serving_input_receiver_fn(feature_placeholders)
     net = BoxUnet(
