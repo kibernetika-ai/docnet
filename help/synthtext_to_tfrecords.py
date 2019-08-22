@@ -183,7 +183,7 @@ def convert(image_idxes,fetcher,out_path , records_per_file = 5000):
         labels = []
         labels_text = []
         for txt in txts:
-            if len(txt) < 2:
+            if len(txt) < 1:
                 labels.append(-1)
             else:
                 labels.append(1)
