@@ -1,7 +1,7 @@
 import tensorflow as tf
 from unet.unet import unet
 from kibernetika.rpt import MlBoardReporter
-
+import logging
 
 def _flat_pixel_cls_values(values):
     shape = values.shape.as_list()
@@ -21,14 +21,16 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
 
     pixel_cls_logits = outs[0]
     pixel_link_logits = outs[1]
-
+    logging.info('pixel_cls_logits - {}'.format(pixel_cls_logits.shape))
+    logging.info('pixel_link_logits - {}'.format(pixel_link_logits.shape))
     pixel_cls_scores = tf.nn.softmax(pixel_cls_logits)
     shape = tf.shape(pixel_link_logits)
     pixel_link_logits = tf.reshape(pixel_link_logits, [shape[0], shape[1], shape[2], 8, 2])
     pixel_link_scores = tf.nn.softmax(pixel_link_logits)
     pixel_pos_scores = pixel_cls_scores[:, :, :, 1]
     link_pos_scores = pixel_link_scores[:, :, :, :, 1]
-
+    logging.info('final:pixel_cls_logits - {}'.format(pixel_cls_logits.shape))
+    logging.info('final:pixel_link_logits - {}'.format(pixel_link_logits.shape))
     loss = None
     train_op = None
     hooks = []
@@ -52,11 +54,13 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
         link_original = features * tf.expand_dims(tf.cast(labels['pixel_link_label'][:, :, :, 0], tf.float32), -1)
         link_predicted = features * tf.expand_dims(link_pos_scores[:, :, :, 0], -1)
         global_step = tf.train.get_or_create_global_step()
+        g = tf.get_default_graph()
         if training:
             board_hook = MlBoardReporter({
                 "_step": global_step,
                 "_train_loss": loss}, every_steps=params['save_summary_steps'])
             chief_hooks = [board_hook]
+            tf.contrib.quantize.create_training_graph(input_graph=g)
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
                 if params['optimizer'] == 'AdamOptimizer':
@@ -64,7 +68,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
                 else:
                     opt = tf.train.RMSPropOptimizer(float(params['lr']), params['weight_decay'])
                 train_op = opt.minimize(loss, global_step=global_step)
-
+        else:
+            tf.contrib.quantize.create_eval_graph(input_graph=g)
         tf.summary.image('Src', features, 3)
         tf.summary.image('Reconstruction', predicted, 3)
         tf.summary.image('Original', original, 3)
@@ -76,6 +81,8 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
             metrics['pixel_pos_link_loss'] = tf.metrics.mean(pixel_pos_link_loss)
             metrics['pixel_neg_link_loss'] = tf.metrics.mean(pixel_neg_link_loss)
     else:
+        g = tf.get_default_graph()
+        tf.contrib.quantize.create_eval_graph(input_graph=g)
         export_outputs = {
             tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY: tf.estimator.export.PredictOutput(
                 {'pixel_pos_scores': pixel_pos_scores, 'link_pos_scores': link_pos_scores})}
