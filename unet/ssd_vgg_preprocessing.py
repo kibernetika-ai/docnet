@@ -270,7 +270,7 @@ def preprocess_for_train(image, labels, bboxes, xs, ys,
         if USING_SHORTER_SIDE_FILTERING:
             xs = xs * out_shape[1]
             ys = ys * out_shape[0]
-            labels, bboxes, xs, ys = tfe.bboxes_filter_by_shorter_side(labels,
+            labels, bboxes, xs, ys = tfe.bboxes_filter_by_shorter_side(scope,labels,
                                                                        bboxes, xs, ys,
                                                                        min_height = MIN_SHORTER_SIDE, max_height = MAX_SHORTER_SIDE,
                                                                        assign_value = LABEL_IGNORE)
