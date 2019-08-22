@@ -26,8 +26,9 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     logging.info('pixel_link_logits - {}'.format(pixel_link_logits.shape))
     pixel_cls_scores = tf.nn.softmax(pixel_cls_logits)
     shape = tf.shape(pixel_link_logits)
-    pixel_link_logits = tf.reshape(pixel_link_logits, [shape[0], shape[1], shape[2], 8, 2])
+    pixel_link_logits = tf.reshape(pixel_link_logits, [shape[0], shape[1]* shape[2] * 8, 2])
     pixel_link_scores = tf.nn.softmax(pixel_link_logits)
+    pixel_link_scores = tf.reshape(pixel_link_scores, [shape[0], shape[1], shape[2], 8, 2])
     pixel_pos_scores = pixel_cls_scores[:, :, :, 1]
     link_pos_scores = pixel_link_scores[:, :, :, :, 1]
     logging.info('final:pixel_cls_logits - {}'.format(pixel_pos_scores.shape))
@@ -40,6 +41,7 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
     chief_hooks = []
     metrics = {}
     if mode != tf.estimator.ModeKeys.PREDICT:
+        pixel_link_logits = tf.reshape(pixel_link_logits, [shape[0], shape[1], shape[2], 8, 2])
         pixel_cls_logits_flatten = _flat_pixel_cls_values(pixel_cls_logits)
         pixel_cls_scores_flatten = _flat_pixel_cls_values(pixel_cls_scores)
         loss, pixel_cls_loss, pixel_pos_link_loss, pixel_neg_link_loss = build_loss(params,
