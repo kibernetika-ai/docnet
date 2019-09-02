@@ -63,9 +63,9 @@ def _unet_model_fn(features, labels, mode, params=None, config=None, model_dir=N
                 "_step": global_step,
                 "_train_loss": loss}, every_steps=params['save_summary_steps'])
             chief_hooks = [board_hook]
-            tf.contrib.quantize.create_training_graph(input_graph=g)
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
+                tf.contrib.quantize.create_training_graph(input_graph=g)
                 if params['optimizer'] == 'AdamOptimizer':
                     opt = tf.train.AdamOptimizer(float(params['lr']))
                 else:
