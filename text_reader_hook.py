@@ -4,6 +4,7 @@ import numpy as np
 import logging
 import json
 import base64
+from ml_serving.utils import helpers
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -45,8 +46,8 @@ def init_hook(**params):
 
 
 def preprocess_boxes(inputs, ctx):
-    image = inputs['image'][0]
-    image = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_COLOR)[:, :, ::-1]
+    image, _ = helpers.load_image(inputs, 'input')
+    image = image[:, :, ::-1]
     resized_im, ratio = resize_image(image)
     resized_im = resized_im.astype(np.float32)
     ctx.image = image
@@ -135,7 +136,7 @@ def final_postprocess(outputs_it, ctx):
                       thickness=1)
     _, buf = cv2.imencode('.png', image[:, :, ::-1])
     image = np.array(buf).tostring()
-    table = json.dumps(table)
+    #table = json.dumps(table)
     return {
         'output': image,
         'table_output': table,
