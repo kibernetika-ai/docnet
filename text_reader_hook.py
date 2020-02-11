@@ -46,7 +46,7 @@ def init_hook(**params):
 
 
 def preprocess_boxes(inputs, ctx):
-    image, _ = helpers.load_image(inputs, 'input')
+    image, _ = helpers.load_image(inputs, 'image')
     image = image[:, :, ::-1]
     resized_im, ratio = resize_image(image)
     resized_im = resized_im.astype(np.float32)
